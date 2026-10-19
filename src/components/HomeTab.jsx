@@ -10,6 +10,7 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
   const [broadcastSending, setBroadcastSending] = useState(false);
 
   const t = (key) => getTranslation(language, key);
+  const isSarpanch = currentUser && currentUser.role === 'Sarpanch';
   const isStaff = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Sarpanch');
 
   const loadFeed = async () => {
@@ -63,8 +64,9 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
     }
   };
 
-  const resolvedIssues = issues.filter(i => i.status === 'Resolved');
-  const pendingIssues = issues.filter(i => i.status !== 'Resolved');
+  // Strictly maximum 5 active and maximum 5 resolved reports
+  const pendingIssues = issues.filter(i => i.status !== 'Resolved').slice(0, 5);
+  const resolvedIssues = issues.filter(i => i.status === 'Resolved').slice(0, 5);
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto px-3 sm:px-6 py-4 animate-fadeIn pb-20 md:pb-8">
@@ -89,7 +91,7 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
           <div className="flex items-center gap-3 mt-4">
             <button
               onClick={() => setActiveTab('report')}
-              className="px-4 py-2.5 bg-secondary text-white hover:bg-secondary/90 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-2"
+              className="px-4 py-2.5 bg-secondary text-white hover:bg-secondary/90 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
             >
               <span className="material-symbols-outlined text-base">add_location_alt</span>
               {t('report_leak')}
@@ -97,7 +99,7 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
             {isStaff && (
               <button
                 onClick={() => setBroadcastOpen(true)}
-                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-headline font-bold text-xs uppercase tracking-wider rounded-xl border border-white/20 active:scale-95 transition-all flex items-center gap-2"
+                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-headline font-bold text-xs uppercase tracking-wider rounded-xl border border-white/20 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-base">campaign</span>
                 {t('broadcast_notice')}
@@ -113,6 +115,52 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
         </div>
       </section>
 
+      {/* 👑 SPECIAL SARPANCH EXECUTIVE DESK (Honorable Sarpanch Panel) */}
+      {isStaff && (
+        <section className="bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border-2 border-amber-500/40 rounded-3xl p-5 sm:p-6 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3.5">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold text-2xl shrink-0 shadow-md">
+              <span className="material-symbols-outlined text-3xl">verified_user</span>
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="bg-amber-500 text-white text-[10px] font-headline font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full">
+                  {isSarpanch ? "OFFICIAL SARPANCH" : "PANCHAYAT ADMIN"}
+                </span>
+                <span className="text-xs text-amber-700 font-bold">
+                  {t('sarpanch_badge')}
+                </span>
+              </div>
+              <h3 className="font-headline font-bold text-lg text-on-surface mt-0.5">
+                {t('sarpanch_panel')}
+              </h3>
+              <p className="text-xs text-on-surface-variant font-body">
+                {pendingIssues.length > 0 
+                  ? `⚠️ ${pendingIssues.length} reports awaiting your verification & repair.` 
+                  : "All community reports are verified and solved!"}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2.5 w-full sm:w-auto">
+            <button
+              onClick={() => setActiveTab('tasks')}
+              className="flex-1 sm:flex-initial px-4 py-2.5 bg-primary text-white hover:bg-primary/95 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-base">assignment_turned_in</span>
+              {t('verify_now')} ({pendingIssues.length})
+            </button>
+            <button
+              onClick={() => setBroadcastOpen(true)}
+              className="flex-1 sm:flex-initial px-4 py-2.5 bg-secondary text-white hover:bg-secondary/95 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-base">campaign</span>
+              {t('broadcast_to_village')}
+            </button>
+          </div>
+        </section>
+      )}
+
       {/* Broadcast Modal for Sarpanch / Admin */}
       {broadcastOpen && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -122,7 +170,7 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
                 <span className="material-symbols-outlined text-2xl">campaign</span>
                 <h3 className="font-headline font-bold text-lg">{t('broadcast_notice')}</h3>
               </div>
-              <button onClick={() => setBroadcastOpen(false)} className="text-on-surface-variant hover:text-on-surface">
+              <button onClick={() => setBroadcastOpen(false)} className="text-on-surface-variant hover:text-on-surface cursor-pointer">
                 <span className="material-symbols-outlined">close</span>
               </button>
             </div>
@@ -153,14 +201,14 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
                 <button
                   type="button"
                   onClick={() => setBroadcastOpen(false)}
-                  className="px-4 py-2 rounded-xl border border-outline-variant text-xs font-bold font-headline uppercase"
+                  className="px-4 py-2 rounded-xl border border-outline-variant text-xs font-bold font-headline uppercase cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={broadcastSending}
-                  className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold font-headline uppercase shadow-md flex items-center gap-1.5"
+                  className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold font-headline uppercase shadow-md flex items-center gap-1.5 cursor-pointer"
                 >
                   {broadcastSending ? 'Sending...' : 'Broadcast'}
                 </button>
@@ -170,7 +218,7 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
         </div>
       )}
 
-      {/* ONLY Real Live Metrics Cards (Fake Water Purity & Daily Supply REMOVED) */}
+      {/* ONLY Real Live Metrics Cards */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
           <div className="flex items-center gap-2">
@@ -201,6 +249,12 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
             {t('under_maintenance')}
           </span>
         </div>
+      </div>
+
+      {/* Rolling Queue Info Banner (5th report rolls off 1st) */}
+      <div className="p-3 bg-surface-container rounded-2xl border border-outline-variant flex items-center gap-2.5 text-xs text-on-surface-variant font-body">
+        <span className="material-symbols-outlined text-primary text-lg shrink-0">speed</span>
+        <span>{t('rolling_queue_info')}</span>
       </div>
 
       {/* How It Works Section */}
@@ -254,12 +308,12 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
         </div>
       </section>
 
-      {/* Recent Activity / Community Feed */}
+      {/* Recent Activity / Community Feed (Strictly Maximum 5 Reports) */}
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h3 className="font-headline font-bold text-lg text-primary flex items-center gap-2">
             <span className="material-symbols-outlined text-xl text-primary">feed</span>
-            {t('community_feed')}
+            {t('community_feed')} (Max 5)
           </h3>
           <span className="text-xs text-on-surface-variant font-medium">
             {t('live_updates')}
@@ -277,7 +331,7 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {issues.slice(0, 6).map((item) => (
+            {issues.slice(0, 5).map((item) => (
               <article key={item.id} className="bg-white p-4 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>

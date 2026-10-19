@@ -755,10 +755,32 @@ app.delete('/api/admin/sessions', requireAuth(['Admin']), async (req, res) => {
   res.json({ success: true });
 });
 
-// ── Issues API ─────────────────────────────────────────────────────
+// ── Issues API (Strict Rolling Queue: Max 5 Pending & Max 5 Resolved) ──
 app.get('/api/issues', async (req, res) => {
-  const issues = await Issue.find({}, { _id: 0, __v: 0 }).sort({ createdAt: -1 });
-  res.json(issues);
+  try {
+    // 1. Prune pending issues to maximum 5 latest
+    const pending = await Issue.find({ status: { $ne: 'Resolved' } }).sort({ createdAt: -1 });
+    if (pending.length > 5) {
+      const pendingToDelete = pending.slice(5);
+      for (const item of pendingToDelete) {
+        await Issue.findOneAndDelete({ id: item.id });
+      }
+    }
+
+    // 2. Prune resolved issues to maximum 5 latest
+    const resolved = await Issue.find({ status: 'Resolved' }).sort({ resolvedAt: -1, createdAt: -1 });
+    if (resolved.length > 5) {
+      const resolvedToDelete = resolved.slice(5);
+      for (const item of resolvedToDelete) {
+        await Issue.findOneAndDelete({ id: item.id });
+      }
+    }
+
+    const issues = await Issue.find({}, { _id: 0, __v: 0 }).sort({ createdAt: -1 });
+    res.json(issues);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Live Map Data (Only REAL Online Users in the last 15 minutes)
@@ -897,6 +919,19 @@ app.post('/api/issues', uploadSafe('photo'), async (req, res) => {
   });
   await newIssue.save();
 
+  // Strict Rolling Buffer: When 5th/new report comes in, auto-delete oldest pending reports exceeding 5
+  try {
+    const pending = await Issue.find({ status: { $ne: 'Resolved' } }).sort({ createdAt: -1 });
+    if (pending.length > 5) {
+      const toDelete = pending.slice(5);
+      for (const item of toDelete) {
+        await Issue.findOneAndDelete({ id: item.id });
+      }
+    }
+  } catch (err) {
+    console.warn("Prune pending error:", err);
+  }
+
   // 1. Send instant in-app notification to the reporting User
   try {
     if (userEmail) {
@@ -1004,6 +1039,19 @@ app.put('/api/issues/:id/resolve', uploadSafe('photo'), async (req, res) => {
     });
   } catch (err) {
     console.error("Resolve feed/notification error:", err);
+  }
+
+  // Strict Rolling Buffer: Keep maximum 5 latest resolved reports, auto-delete oldest exceeding 5
+  try {
+    const resolved = await Issue.find({ status: 'Resolved' }).sort({ resolvedAt: -1, createdAt: -1 });
+    if (resolved.length > 5) {
+      const toDelete = resolved.slice(5);
+      for (const item of toDelete) {
+        await Issue.findOneAndDelete({ id: item.id });
+      }
+    }
+  } catch (err) {
+    console.warn("Prune resolved error:", err);
   }
 
   res.json({ success: true, issue: updated });

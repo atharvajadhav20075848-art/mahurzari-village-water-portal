@@ -91,7 +91,12 @@ export const translations = {
     apk_banner_title: "Gram Jal Android App Available",
     apk_banner_desc: "Fast, offline alerts & high-accuracy leak reporting for your phone",
     direct_apk: "Direct APK",
-    pwa: "PWA"
+    pwa: "PWA",
+    sarpanch_badge: "Gram Sarpanch - Mahurzari",
+    sarpanch_panel: "Sarpanch Executive Control Panel",
+    verify_now: "Verify & Resolve Reports",
+    broadcast_to_village: "Send Village Notice",
+    rolling_queue_info: "Fast-Load Mode: Auto-rolling to keep latest 5 reports (reduces mobile data & lag)"
   },
   mr: {
     portal_title: "ग्राम जल",
@@ -185,7 +190,12 @@ export const translations = {
     apk_banner_title: "ग्राम जल अँड्रॉइड अ‍ॅप उपलब्ध",
     apk_banner_desc: "जलद सूचना व अचूक GPS गळती नोंदणीसाठी आपल्या फोनमध्ये इन्स्टॉल करा",
     direct_apk: "थेट APK डाउनलोड",
-    pwa: "PWA इन्स्टॉल"
+    pwa: "PWA इन्स्टॉल",
+    sarpanch_badge: "गावचे सरपंच - माहूरझरी ग्रामपंचायत",
+    sarpanch_panel: "सरपंच थेट नियंत्रण व तक्रार निवारण कक्ष",
+    verify_now: "प्रलंबित तक्रारी तपासा",
+    broadcast_to_village: "गावाला तातडीची सूचना पाठवा",
+    rolling_queue_info: "जलद गती मोड: सर्वात नवीन ५ तक्रारींची नोंद (मोबाईल डेटा व लॅग वाचवण्यासाठी)"
   },
   hi: {
     portal_title: "ग्राम जल",
@@ -279,7 +289,12 @@ export const translations = {
     apk_banner_title: "ग्राम जल एंड्रॉइड ऐप उपलब्ध",
     apk_banner_desc: "तेज अलर्ट व सटीक GPS लीकेज रिपोर्टिंग के लिए अपने फोन में इंस्टॉल करें",
     direct_apk: "डायरेक्ट APK डाउनलोड",
-    pwa: "PWA इंस्टॉल"
+    pwa: "PWA इंस्टॉल",
+    sarpanch_badge: "ग्राम प्रधान / सरपंच - माहूरझरी",
+    sarpanch_panel: "सरपंच त्वरित जल प्रबंधन केंद्र",
+    verify_now: "लंबित शिकायतें सत्यापित करें",
+    broadcast_to_village: "गांव को आवश्यक सूचना भेजें",
+    rolling_queue_info: "फास्ट मोड: नवीनतम ५ रिपोर्ट ही प्रदर्शित (डेटा बचत व तेज स्पीड हेतु)"
   }
 };
 
