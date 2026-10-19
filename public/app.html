@@ -26,9 +26,14 @@
         <p class="text-[10px] text-secondary-fixed">Add to phone home screen &amp; get alerts</p>
       </div>
     </div>
-    <button id="btnPwaInstall" onclick="triggerPwaInstall()" class="px-3 py-1.5 bg-secondary-fixed text-on-secondary-fixed text-xs font-bold uppercase rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1">
-      <span class="material-symbols-outlined text-sm">download</span> Install
-    </button>
+    <div class="flex items-center gap-1.5">
+      <a href="/api/download/apk" download="Gram-Jal-Mahurzari.apk" class="px-2.5 py-1.5 bg-surface text-secondary text-xs font-bold uppercase rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1">
+        <span class="material-symbols-outlined text-sm">android</span> APK
+      </a>
+      <button id="btnPwaInstall" onclick="triggerPwaInstall()" class="px-2.5 py-1.5 bg-secondary-fixed text-on-secondary-fixed text-xs font-bold uppercase rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1">
+        <span class="material-symbols-outlined text-sm">download</span> PWA
+      </button>
+    </div>
   </div>
 </section>
 
@@ -298,6 +303,10 @@ function switchAppTab(tabName) {
   window.scrollTo({ top: 0, behavior: 'smooth' });
 
   if (tabName === 'tasks') loadTasks();
+  if (tabName === 'report') {
+    checkReportCooldown();
+    fetchGPS();
+  }
 }
 
 function setReportType(type, btn) {
@@ -322,16 +331,61 @@ document.getElementById('photoFileApp').addEventListener('change', () => {
   }
 });
 
+let reportCooldownInterval = null;
+function checkReportCooldown() {
+  const lastReport = parseInt(localStorage.getItem('gram_last_report_time') || '0', 10);
+  const elapsed = Date.now() - lastReport;
+  const COOLDOWN_MS = 5 * 60 * 1000;
+  const submitBtn = document.getElementById('submitBtnApp');
+  if (!submitBtn) return;
+
+  if (elapsed < COOLDOWN_MS) {
+    submitBtn.disabled = true;
+    submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
+    if (reportCooldownInterval) clearInterval(reportCooldownInterval);
+    reportCooldownInterval = setInterval(() => {
+      const currentElapsed = Date.now() - parseInt(localStorage.getItem('gram_last_report_time') || '0', 10);
+      if (currentElapsed >= COOLDOWN_MS) {
+        clearInterval(reportCooldownInterval);
+        submitBtn.disabled = false;
+        submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+        submitBtn.innerHTML = '<span class="material-symbols-outlined text-xl">send</span> Submit Report';
+      } else {
+        const remaining = Math.ceil((COOLDOWN_MS - currentElapsed) / 1000);
+        const m = Math.floor(remaining / 60);
+        const s = remaining % 60;
+        submitBtn.innerHTML = `<span class="material-symbols-outlined text-xl">timer</span> Next Report in ${m}m ${s < 10 ? '0' : ''}${s}s`;
+      }
+    }, 1000);
+  } else {
+    submitBtn.disabled = false;
+    submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+    submitBtn.innerHTML = '<span class="material-symbols-outlined text-xl">send</span> Submit Report';
+  }
+}
+
 async function fetchGPS() {
+  const displayEl = document.getElementById('displayLocationApp');
   try {
-    const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 6000 }));
-    realGps = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
-    realLocation = `GPS: ${realGps}`;
-    document.getElementById('displayLocationApp').textContent = realLocation;
-    document.getElementById('displayLocationApp').classList.remove('italic');
+    if (displayEl) displayEl.textContent = "Requesting High-Accuracy GPS...";
+    const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { 
+      enableHighAccuracy: true, 
+      timeout: 15000, 
+      maximumAge: 0 
+    }));
+    realGps = `${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)}`;
+    const acc = Math.round(pos.coords.accuracy || 10);
+    realLocation = `GPS: ${realGps} (±${acc}m Accurate)`;
+    if (displayEl) {
+      displayEl.textContent = realLocation;
+      displayEl.classList.remove('italic');
+    }
   } catch(e) {
-    document.getElementById('displayLocationApp').textContent = "Village Center (Network Estimate)";
-    realLocation = "Village Center";
+    console.warn("GPS High Accuracy prompt notice:", e);
+    if (displayEl) {
+      displayEl.textContent = "Village Center (GPS permission needed for exact leak spot)";
+    }
+    realLocation = "Village Center (Estimated)";
   }
 }
 fetchGPS();
@@ -344,6 +398,20 @@ async function submitReportFromApp() {
     return;
   }
 
+  // 5-min frontend check
+  const lastReport = parseInt(localStorage.getItem('gram_last_report_time') || '0', 10);
+  if (Date.now() - lastReport < 5 * 60 * 1000) {
+    const rem = Math.ceil((5 * 60 * 1000 - (Date.now() - lastReport)) / 1000);
+    alert(`Aapne haal hi me report kiya hai. Ek phone se 5 minute me 1 hi report allowed hai.\n\nKripya ${Math.floor(rem/60)}m ${rem%60}s baad bhein.`);
+    checkReportCooldown();
+    return;
+  }
+
+  const submitBtn = document.getElementById('submitBtnApp');
+  const origText = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="material-symbols-outlined animate-spin text-xl">progress_activity</span> Submitting...';
+
   const formData = new FormData();
   formData.append('title', selectedReportType);
   formData.append('type', selectedReportType);
@@ -352,18 +420,43 @@ async function submitReportFromApp() {
   formData.append('gps', realGps);
   if (file) formData.append('photo', file);
 
+  const savedEmail = localStorage.getItem('gram_user_email');
   try {
-    const res = await fetch('/api/issues', { method: 'POST', body: formData });
-    if (res.ok) {
-      alert("Report submitted successfully! You received a confirmation notice in notifications.");
+    const res = await fetch('/api/issues', { 
+      method: 'POST', 
+      headers: savedEmail ? { 'x-user-email': encodeURIComponent(savedEmail) } : {},
+      body: formData 
+    });
+    
+    let data = {};
+    try { data = await res.json(); } catch(err) { data = {}; }
+
+    if (res.status === 429) {
+      localStorage.setItem('gram_last_report_time', (Date.now() - (5 * 60 * 1000 - (data.remainingSeconds * 1000))).toString());
+      alert(data.error || "Rate limit reached. Please wait before next report.");
+      checkReportCooldown();
+      return;
+    }
+
+    if (res.ok && (data.success || data.issue)) {
+      localStorage.setItem('gram_last_report_time', Date.now().toString());
+      alert("✅ Report submitted successfully!\nPanchayat team has been alerted.");
       document.getElementById('descriptionApp').value = '';
       loadHomeFixes();
+      checkReportCooldown();
       if (window.fetchGlobalNotifications) window.fetchGlobalNotifications();
       switchAppTab('home');
     } else {
-      alert("Failed to submit issue.");
+      alert(data.error || "Failed to submit issue.");
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = origText;
     }
-  } catch(e) { console.error(e); }
+  } catch(e) { 
+    console.error(e); 
+    alert("Connection error. Please try again.");
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = origText;
+  }
 }
 
 async function loadHomeFixes() {

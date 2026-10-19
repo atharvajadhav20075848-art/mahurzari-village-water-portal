@@ -37,7 +37,8 @@ app.use(session({
   cookie: { maxAge: 365 * 24 * 60 * 60 * 1000 } // 1 year persistent session
 }));
 
-const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "547185696384-nfog7eetv58j1vh6c75u42jd88gcqsi2.apps.googleusercontent.com";
+const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // ── Database Setup (MongoDB with Serverless Caching) ───────────────────
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://atharvajadhav20075848_db_user:T6Xj3t4KOCtpfbXT@cluster0.hrxwdsn.mongodb.net/?appName=Cluster0";
@@ -93,8 +94,10 @@ app.use(async (req, res, next) => {
 // ── Schemas & Models ──────────────────────────────────────────────────
 const User = mongoose.models.User || mongoose.model('User', new mongoose.Schema({
   email: { type: String, required: true, unique: true },
+  name: { type: String },
   password: { type: String },
-  role: { type: String, default: 'People/User' }
+  role: { type: String, default: 'People/User' },
+  createdAt: { type: Date, default: Date.now }
 }));
 
 const Issue = mongoose.models.Issue || mongoose.model('Issue', new mongoose.Schema({
@@ -108,6 +111,7 @@ const Issue = mongoose.models.Issue || mongoose.model('Issue', new mongoose.Sche
   photoUrl: String,
   reporter: { type: String, default: 'Resident' },
   reporterEmail: { type: String, default: '' },
+  reporterIp: { type: String, default: '' },
   status: { type: String, default: 'Pending' },
   resolvedBy: String,
   resolutionPhotoUrl: String,
@@ -156,7 +160,8 @@ const ActiveSession = mongoose.models.ActiveSession || mongoose.model('ActiveSes
   location: String,
   lat: Number,
   lon: Number,
-  loginTime: String
+  loginTime: String,
+  updatedAt: { type: Date, default: Date.now }
 }));
 
 async function seedDefaultUsers() {
@@ -164,9 +169,9 @@ async function seedDefaultUsers() {
     const count = await User.countDocuments();
     if (count === 0) {
       await User.insertMany([
-        { email: 'admin@village.gov.in', role: 'Admin', password: 'admin123' },
-        { email: 'sarpanch@village.gov.in', role: 'Sarpanch', password: 'sarpanch123' },
-        { email: 'resident@village.gov.in', role: 'People/User', password: 'user123' }
+        { email: 'admin@village.gov.in', name: 'Panchayat Admin', role: 'Admin', password: 'admin123' },
+        { email: 'sarpanch@village.gov.in', name: 'Gram Sarpanch', role: 'Sarpanch', password: 'sarpanch123' },
+        { email: 'resident@village.gov.in', name: 'Sample Resident', role: 'People/User', password: 'user123' }
       ]);
       console.log("Seeded default users to MongoDB.");
     }
@@ -294,16 +299,51 @@ function requireAuth(allowedRoles) {
 
 // ── Authentication Routes ──────────────────────────────────────────
 
+// ── Authentication Routes ──────────────────────────────────────────
+
+function formatNameFromEmail(email, providedName) {
+  if (providedName && providedName.trim()) return providedName.trim();
+  if (!email || !email.includes('@')) return 'Resident';
+  const prefix = email.split('@')[0];
+  const cleaned = prefix.replace(/[0-9_.-]+/g, ' ').trim();
+  if (!cleaned) return prefix;
+  return cleaned.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+// Universal Sign-In: Citizens only need their Gmail/Email, no password required!
+// Only Admin and Sarpanch require pre-set passwords.
 app.post('/api/auth/manual', async (req, res) => {
-  const { email, password, lat, lon } = req.body;
-  if (!email || !password) {
-    return res.status(400).json({ error: 'Email and password are required' });
+  const { email, password, name: rawName, lat, lon } = req.body;
+  if (!email || !email.trim()) {
+    return res.status(400).json({ error: 'Email is required' });
   }
 
-  const user = await User.findOne({ email: email.toLowerCase().trim() });
+  const cleanEmail = email.toLowerCase().trim();
+  const isOfficial = cleanEmail === 'admin@village.gov.in' || cleanEmail === 'sarpanch@village.gov.in';
 
-  if (!user || user.password !== password) {
-    return res.status(401).json({ error: 'Access Denied', message: 'Invalid email or password.' });
+  let user = await User.findOne({ email: cleanEmail });
+
+  if (isOfficial) {
+    if (!password) {
+      return res.status(400).json({ error: 'Password is required for Official accounts' });
+    }
+    if (!user || user.password !== password) {
+      return res.status(401).json({ error: 'Access Denied', message: 'Invalid official credentials.' });
+    }
+  } else {
+    // Resident / Citizen Login: Instant access, auto-register if new
+    const displayName = formatNameFromEmail(cleanEmail, rawName);
+    if (!user) {
+      user = await User.create({
+        email: cleanEmail,
+        name: displayName,
+        role: 'People/User',
+        password: 'citizen_auto_auth'
+      });
+    } else if (rawName && !user.name) {
+      user.name = displayName;
+      await user.save();
+    }
   }
 
   const clientIP = req.ip || req.connection?.remoteAddress || '127.0.0.1';
@@ -311,34 +351,48 @@ app.post('/api/auth/manual', async (req, res) => {
   let finalLat = 0;
   let finalLon = 0;
 
-  if (lat && lon) {
+  if (lat && lon && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lon))) {
     finalLat = parseFloat(lat);
     finalLon = parseFloat(lon);
-    locationStr = `GPS: ${finalLat.toFixed(4)}, ${finalLon.toFixed(4)}`;
+    locationStr = `GPS: ${finalLat.toFixed(5)}, ${finalLon.toFixed(5)}`;
   } else {
     const location = await getLocationFromIP(clientIP);
     locationStr = formatLocationString(location);
-    finalLat = location.lat;
-    finalLon = location.lon;
+    finalLat = location.lat || 21.235; // Default to Mahurzari, Nagpur area
+    finalLon = location.lon || 79.005;
   }
+
+  const finalName = user.name || formatNameFromEmail(user.email, rawName);
 
   req.session.user = {
     email: user.email,
-    name: user.email.split('@')[0],
+    name: finalName,
     role: user.role,
     ip: clientIP,
     location: locationStr,
+    lat: finalLat,
+    lon: finalLon,
     loginTime: new Date().toISOString()
   };
 
   await ActiveSession.findOneAndDelete({ email: user.email });
-  await ActiveSession.create({ ...req.session.user, lat: finalLat, lon: finalLon });
+  await ActiveSession.create({ 
+    email: user.email,
+    name: finalName,
+    role: user.role,
+    ip: clientIP,
+    location: locationStr,
+    lat: finalLat,
+    lon: finalLon,
+    loginTime: req.session.user.loginTime,
+    updatedAt: new Date()
+  });
   
   await Feed.create({
     id: Date.now(),
-    name: req.session.user.name,
+    name: finalName,
     time: req.session.user.loginTime,
-    action: `Logged in manually as ${user.role}.`,
+    action: `Logged in as ${user.role}.`,
     location: locationStr,
     ip: clientIP,
     phone: 'N/A'
@@ -348,7 +402,7 @@ app.post('/api/auth/manual', async (req, res) => {
 });
 
 app.post('/api/auth/google', async (req, res) => {
-  const { token, email: rawEmail, lat, lon } = req.body;
+  const { token, email: rawEmail, name: rawName, lat, lon } = req.body;
 
   let email, name;
 
@@ -356,28 +410,28 @@ app.post('/api/auth/google', async (req, res) => {
     try {
       const ticket = await googleClient.verifyIdToken({ idToken: token, audience: process.env.GOOGLE_CLIENT_ID });
       const payload = ticket.getPayload();
-      email = payload.email.toLowerCase();
-      name = payload.name || email.split('@')[0];
+      email = payload.email.toLowerCase().trim();
+      name = payload.name || formatNameFromEmail(email, rawName);
     } catch (err) {
       if (rawEmail) {
         email = rawEmail.toLowerCase().trim();
-        name = email.split('@')[0];
+        name = formatNameFromEmail(email, rawName);
       } else {
         return res.status(401).json({ error: 'Invalid Google token' });
       }
     }
   } else if (rawEmail) {
     email = rawEmail.toLowerCase().trim();
-    name = email.split('@')[0];
+    name = formatNameFromEmail(email, rawName);
   } else {
     return res.status(400).json({ error: 'Google token or email required' });
   }
 
   let user = await User.findOne({ email });
   if (!user) {
-    // Auto-create new resident user on first Google sign-in
     user = await User.create({
       email: email,
+      name: name,
       role: 'People/User',
       password: 'google_oauth_user'
     });
@@ -388,25 +442,46 @@ app.post('/api/auth/google', async (req, res) => {
   let finalLat = 0;
   let finalLon = 0;
 
-  if (lat && lon) {
+  if (lat && lon && !isNaN(parseFloat(lat)) && !isNaN(parseFloat(lon))) {
     finalLat = parseFloat(lat);
     finalLon = parseFloat(lon);
-    locationStr = `GPS: ${finalLat.toFixed(4)}, ${finalLon.toFixed(4)}`;
+    locationStr = `GPS: ${finalLat.toFixed(5)}, ${finalLon.toFixed(5)}`;
   } else {
     const location = await getLocationFromIP(clientIP);
     locationStr = formatLocationString(location);
-    finalLat = location.lat;
-    finalLon = location.lon;
+    finalLat = location.lat || 21.235;
+    finalLon = location.lon || 79.005;
   }
 
-  req.session.user = { email, name, role: user.role, ip: clientIP, location: locationStr, loginTime: new Date().toISOString() };
+  const finalName = user.name || name || formatNameFromEmail(user.email, rawName);
+
+  req.session.user = { 
+    email, 
+    name: finalName, 
+    role: user.role, 
+    ip: clientIP, 
+    location: locationStr, 
+    lat: finalLat,
+    lon: finalLon,
+    loginTime: new Date().toISOString() 
+  };
   
   await ActiveSession.findOneAndDelete({ email });
-  await ActiveSession.create({ ...req.session.user, lat: finalLat, lon: finalLon });
+  await ActiveSession.create({ 
+    email,
+    name: finalName,
+    role: user.role,
+    ip: clientIP,
+    location: locationStr,
+    lat: finalLat,
+    lon: finalLon,
+    loginTime: req.session.user.loginTime,
+    updatedAt: new Date()
+  });
 
   await Feed.create({
     id: Date.now(),
-    name: name,
+    name: finalName,
     time: req.session.user.loginTime,
     action: `Logged in via Google as ${user.role}.`,
     location: locationStr,
@@ -681,9 +756,80 @@ app.get('/api/issues', async (req, res) => {
   res.json(issues);
 });
 
+// Live Map Data (Active Users with real GPS & Reported Issues with real GPS)
+app.get('/api/live-map', async (req, res) => {
+  try {
+    const totalUsers = await User.countDocuments();
+    const activeSessionsCount = await ActiveSession.countDocuments();
+    const activeReports = await Issue.countDocuments({ status: { $ne: 'Resolved' } });
+    const resolvedReports = await Issue.countDocuments({ status: 'Resolved' });
+
+    const liveUsers = await ActiveSession.find({}, { _id: 0, __v: 0 }).sort({ updatedAt: -1 }).limit(100);
+    const issues = await Issue.find({}, { _id: 0, __v: 0 }).sort({ createdAt: -1 }).limit(100);
+
+    res.json({
+      metrics: {
+        totalUsers,
+        liveNow: activeSessionsCount,
+        activeReports,
+        resolvedReports
+      },
+      liveUsers,
+      issues
+    });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Direct APK Download
+app.get('/api/download/apk', (req, res) => {
+  const apkPath = path.join(__dirname, 'village-water-app-debug.apk');
+  if (fs.existsSync(apkPath)) {
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    res.setHeader('Content-Disposition', 'attachment; filename="Gram-Jal-Mahurzari.apk"');
+    return res.sendFile(apkPath);
+  }
+  res.status(404).send('APK file not available on server.');
+});
+
 app.post('/api/issues', uploadSafe('photo'), async (req, res) => {
   const { title, type, description, location, gps } = req.body;
   
+  const clientIP = req.ip || req.connection?.remoteAddress || '127.0.0.1';
+  const userEmail = (req.session?.user?.email || 
+    (req.headers['x-user-email'] ? decodeURIComponent(req.headers['x-user-email']).trim() : '') || 
+    'resident@village.gov').toLowerCase().trim();
+  const userName = req.session?.user?.name || (userEmail.includes('@') ? userEmail.split('@')[0] : 'Resident');
+  const userRole = req.session?.user?.role || 'People/User';
+
+  // ── 5-Minute Rate Limit Check Per Phone / Device / IP ─────────────
+  const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes (300,000 ms)
+  const queryConditions = [];
+  if (userEmail && userEmail !== 'resident@village.gov') {
+    queryConditions.push({ reporterEmail: userEmail });
+  }
+  if (clientIP && clientIP !== '127.0.0.1' && clientIP !== '::1') {
+    queryConditions.push({ reporterIp: clientIP });
+  }
+
+  if (queryConditions.length > 0) {
+    const recentReport = await Issue.findOne({ $or: queryConditions }).sort({ createdAt: -1 });
+    if (recentReport && recentReport.createdAt) {
+      const elapsed = Date.now() - new Date(recentReport.createdAt).getTime();
+      if (elapsed < COOLDOWN_MS) {
+        const remainingMs = COOLDOWN_MS - elapsed;
+        const remainingSec = Math.ceil(remainingMs / 1000);
+        const mins = Math.floor(remainingSec / 60);
+        const secs = remainingSec % 60;
+        return res.status(429).json({
+          error: `Ek phone/device se 5 minute me 1 hi report bheji ja sakti hai. Kripya ${mins} min ${secs} sec baad prayas karein.`,
+          remainingSeconds: remainingSec
+        });
+      }
+    }
+  }
+
   let finalLat = 0, finalLon = 0;
   if (gps && gps !== 'Unknown') {
     const parts = gps.split(',');
@@ -692,12 +838,6 @@ app.post('/api/issues', uploadSafe('photo'), async (req, res) => {
       finalLon = parseFloat(parts[1].trim()) || 0;
     }
   }
-
-  const userEmail = req.session?.user?.email || 
-    (req.headers['x-user-email'] ? decodeURIComponent(req.headers['x-user-email']).trim() : '') || 
-    'resident@village.gov';
-  const userName = req.session?.user?.name || (userEmail.includes('@') ? userEmail.split('@')[0] : 'Resident');
-  const userRole = req.session?.user?.role || 'People/User';
 
   const defaultPhoto = type === 'Water Related Issue' 
     ? 'https://res.cloudinary.com/rqltdk0j/image/upload/v1788176415/village_water_portal/s2fwandxq8b3fb9enyoa.jpg'
@@ -725,6 +865,7 @@ app.post('/api/issues', uploadSafe('photo'), async (req, res) => {
     photoUrl: finalPhotoUrl,
     reporter: userName,
     reporterEmail: userEmail,
+    reporterIp: clientIP,
     status: 'Pending'
   });
   await newIssue.save();

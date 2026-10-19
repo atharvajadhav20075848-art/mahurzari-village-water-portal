@@ -60,27 +60,60 @@
 
 <script src="/public/js/auth-persist.js"></script>
 <script>
-document.getElementById('manualLoginForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const email = document.getElementById('userId').value;
-  const password = document.getElementById('password').value;
-  
-  let lat = null;
-  let lon = null;
+// High-Accuracy GPS Request Helper
+async function getAccurateLocation() {
+  let lat = null, lon = null;
   try {
     const position = await new Promise((resolve, reject) => {
-      navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 10000, maximumAge: 0 });
+      navigator.geolocation.getCurrentPosition(resolve, reject, { 
+        enableHighAccuracy: true, 
+        timeout: 12000, 
+        maximumAge: 0 
+      });
     });
     lat = position.coords.latitude;
     lon = position.coords.longitude;
   } catch (err) {
-    console.warn("Geolocation issue.", err);
-    if (err.code === 1) {
-      alert("Location access was blocked by your browser! We will use a rough network estimate. To fix this, Allow Location in site settings.");
-    } else {
-      console.log("Could not get precise location (timeout/unavailable). Using fallback.");
-    }
+    console.warn("High Accuracy GPS prompt notice:", err);
   }
+  return { lat, lon };
+}
+
+// Show/Hide password field dynamically based on official vs resident email
+const emailInput = document.getElementById('userId');
+const passContainer = document.getElementById('password')?.closest('.flex.flex-col');
+const passInput = document.getElementById('password');
+
+if (emailInput && passContainer && passInput) {
+  emailInput.addEventListener('input', () => {
+    const val = emailInput.value.toLowerCase().trim();
+    if (val === 'admin@village.gov.in' || val === 'sarpanch@village.gov.in') {
+      passContainer.style.display = 'flex';
+      passInput.required = true;
+    } else {
+      passContainer.style.display = 'none';
+      passInput.required = false;
+    }
+  });
+  // Initial check
+  if (emailInput.value.toLowerCase().trim() !== 'admin@village.gov.in' && emailInput.value.toLowerCase().trim() !== 'sarpanch@village.gov.in') {
+    passContainer.style.display = 'none';
+    passInput.required = false;
+  }
+}
+
+document.getElementById('manualLoginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('userId').value.trim();
+  const password = passInput ? passInput.value : '';
+  
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  const origBtnContent = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<span class="material-symbols-outlined animate-spin text-sm">progress_activity</span> Signing In...';
+
+  // Ask for accurate GPS location
+  const { lat, lon } = await getAccurateLocation();
 
   try {
     const res = await fetch('/api/auth/manual', {
@@ -96,12 +129,15 @@ document.getElementById('manualLoginForm').addEventListener('submit', async (e) 
       window.location.href = isMobile ? '/app' : '/home';
     } else {
       const err = await res.json();
-      alert(err.message || 'Invalid credentials');
-      return;
+      alert(err.message || err.error || 'Login failed. Please check details.');
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = origBtnContent;
     }
   } catch (err) {
     console.error(err);
-    alert('Server error');
+    alert('Server connection error. Please try again.');
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = origBtnContent;
   }
 });
 
@@ -122,15 +158,10 @@ async function handleCustomGoogleClick() {
 }
 
 async function promptGoogleFallback() {
-  const email = prompt("Sign in with Google - Enter your Google/Gmail ID:\n(e.g. yourname@gmail.com)");
+  const email = prompt("Google Sign-In - Enter your Gmail ID:\n(e.g. yourname@gmail.com)\n\nNote: Har Gmail ID se app bina password direct open ho jayegi!");
   if (!email || !email.trim()) return;
 
-  let lat = null, lon = null;
-  try {
-    const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { timeout: 4000 }));
-    lat = pos.coords.latitude;
-    lon = pos.coords.longitude;
-  } catch (e) {}
+  const { lat, lon } = await getAccurateLocation();
 
   try {
     const res = await fetch('/api/auth/google', {
