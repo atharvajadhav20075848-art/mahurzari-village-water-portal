@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { getTranslation } from '../utils/translations';
 
-export default function TasksTab({ currentUser }) {
+export default function TasksTab({ currentUser, language = 'en' }) {
   const [issues, setIssues] = useState([]);
   const [activeTaskTab, setActiveTaskTab] = useState('pending'); // 'pending' or 'solved'
   const [loading, setLoading] = useState(true);
   const [resolvingId, setResolvingId] = useState(null);
-  const [resolutionPhoto, setResolutionPhoto] = useState(null);
+
+  const t = (key) => getTranslation(language, key);
 
   const fetchTasks = async () => {
     try {
@@ -67,10 +69,10 @@ export default function TasksTab({ currentUser }) {
       {/* Title */}
       <div className="mb-4">
         <h2 className="font-headline font-bold text-2xl text-primary">
-          Panchayat Task Verification
+          {t('tasks_title')}
         </h2>
         <p className="text-xs text-on-surface-variant font-body">
-          Review reported leaks and verify on-ground repair work.
+          {t('tasks_subtitle')}
         </p>
       </div>
 
@@ -84,7 +86,7 @@ export default function TasksTab({ currentUser }) {
               : 'text-on-surface-variant hover:text-on-surface'
           }`}
         >
-          Pending Tasks ({pending.length})
+          {t('pending_tasks')} ({pending.length})
         </button>
         <button
           onClick={() => setActiveTaskTab('solved')}
@@ -94,7 +96,7 @@ export default function TasksTab({ currentUser }) {
               : 'text-on-surface-variant hover:text-on-surface'
           }`}
         >
-          Resolved Archive ({solved.length})
+          {t('resolved_archive')} ({solved.length})
         </button>
       </div>
 
@@ -122,7 +124,7 @@ export default function TasksTab({ currentUser }) {
                     </p>
                   </div>
                   <span className="px-2.5 py-1 bg-error-container text-on-error-container text-[10px] font-headline font-bold uppercase tracking-wider rounded-full shrink-0">
-                    Pending Verification
+                    {t('pending')}
                   </span>
                 </div>
 
@@ -144,10 +146,10 @@ export default function TasksTab({ currentUser }) {
                   <button
                     onClick={() => handleResolveSubmit(item.id)}
                     disabled={resolvingId === item.id}
-                    className="px-4 py-2.5 bg-secondary text-white hover:bg-secondary/90 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-1.5"
+                    className="px-4 py-2.5 bg-secondary text-white hover:bg-secondary/90 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-base">verified</span>
-                    {resolvingId === item.id ? 'Uploading...' : 'Verify & Mark Resolved'}
+                    {resolvingId === item.id ? 'Uploading...' : t('verify_resolve')}
                   </button>
                 </div>
               </div>
@@ -172,7 +174,7 @@ export default function TasksTab({ currentUser }) {
                     </p>
                   </div>
                   <span className="px-2.5 py-1 bg-secondary-container text-secondary text-[10px] font-headline font-bold uppercase tracking-wider rounded-full shrink-0">
-                    Resolved
+                    {t('after_fixed')}
                   </span>
                 </div>
 
@@ -182,7 +184,7 @@ export default function TasksTab({ currentUser }) {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative rounded-2xl overflow-hidden aspect-video bg-surface-container">
                     <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase z-10">
-                      Before
+                      {t('before')}
                     </span>
                     <img
                       src={item.photoUrl || 'https://images.unsplash.com/photo-1584467735815-f778f274e296?auto=format&fit=crop&q=80&w=400'}
@@ -192,7 +194,7 @@ export default function TasksTab({ currentUser }) {
                   </div>
                   <div className="relative rounded-2xl overflow-hidden aspect-video bg-surface-container">
                     <span className="absolute top-1.5 left-1.5 bg-secondary text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase z-10">
-                      After (Fixed)
+                      {t('after_fixed')}
                     </span>
                     <img
                       src={item.resolutionPhotoUrl || item.photoUrl || 'https://images.unsplash.com/photo-1541888946425-d0fbb186c5f7?auto=format&fit=crop&q=80&w=400'}

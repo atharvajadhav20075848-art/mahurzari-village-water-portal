@@ -1,35 +1,109 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { getTranslation } from '../utils/translations';
 
-export default function LoginView({ onLoginSuccess }) {
+const GOOGLE_CLIENT_ID = "547185696384-nfog7eetv58j1vh6c75u42jd88gcqsi2.apps.googleusercontent.com";
+
+export default function LoginView({ onLoginSuccess, language = 'en', setLanguage }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [gpsStatus, setGpsStatus] = useState('');
+  const googleBtnRef = useRef(null);
+
+  const t = (key) => getTranslation(language, key);
 
   const isOfficial = email.toLowerCase().trim() === 'admin@village.gov.in' || 
                      email.toLowerCase().trim() === 'sarpanch@village.gov.in';
 
   const getAccurateGps = async () => {
-    setGpsStatus('Acquiring high-accuracy GPS...');
+    setGpsStatus('Acquiring high-accuracy GPS (±5m)...');
     let lat = null, lon = null;
     try {
-      const pos = await new Promise((res, rej) => {
-        navigator.geolocation.getCurrentPosition(res, rej, {
-          enableHighAccuracy: true,
-          timeout: 12000,
-          maximumAge: 0
+      if (navigator.geolocation) {
+        const pos = await new Promise((res, rej) => {
+          navigator.geolocation.getCurrentPosition(res, rej, {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          });
         });
-      });
-      lat = pos.coords.latitude;
-      lon = pos.coords.longitude;
-      setGpsStatus(`GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+        lat = pos.coords.latitude;
+        lon = pos.coords.longitude;
+        setGpsStatus(`GPS: ${lat.toFixed(4)}, ${lon.toFixed(4)}`);
+      }
     } catch (err) {
       console.warn("GPS notice on login:", err);
       setGpsStatus('');
     }
     return { lat, lon };
   };
+
+  // Initialize official Google Identity Services button
+  useEffect(() => {
+    const handleCredentialResponse = async (response) => {
+      if (response && response.credential) {
+        setLoading(true);
+        const { lat, lon } = await getAccurateGps();
+        try {
+          const res = await fetch('/api/auth/google', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: response.credential, lat, lon })
+          });
+          const data = await res.json();
+          if (res.ok && data.user) {
+            localStorage.setItem('gram_user_email', data.user.email);
+            localStorage.setItem('gram_user_role', data.user.role);
+            onLoginSuccess(data.user);
+          } else {
+            alert(data.message || data.error || 'Google login failed.');
+          }
+        } catch (err) {
+          console.error(err);
+          alert('Error connecting with Google Sign-In.');
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    const initGoogleGSI = () => {
+      if (window.google && window.google.accounts && window.google.accounts.id) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_CLIENT_ID,
+            callback: handleCredentialResponse,
+            auto_select: false,
+            cancel_on_tap_outside: true
+          });
+
+          if (googleBtnRef.current) {
+            googleBtnRef.current.innerHTML = '';
+            window.google.accounts.id.renderButton(googleBtnRef.current, {
+              theme: 'outline',
+              size: 'large',
+              width: googleBtnRef.current.offsetWidth || 340,
+              text: 'continue_with',
+              shape: 'pill'
+            });
+          }
+        } catch (e) {
+          console.warn("GSI init warning:", e);
+        }
+      }
+    };
+
+    initGoogleGSI();
+    const interval = setInterval(() => {
+      if (window.google?.accounts?.id) {
+        initGoogleGSI();
+        clearInterval(interval);
+      }
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -69,37 +143,21 @@ export default function LoginView({ onLoginSuccess }) {
     }
   };
 
-  const handleGoogleClick = async () => {
-    const inputEmail = prompt("Sign in with Google - Enter your Gmail ID:\n(e.g. name@gmail.com)\n\nNote: Har Gmail ID se portal direct open ho jayega bina password ke!");
-    if (!inputEmail || !inputEmail.trim()) return;
-
-    setLoading(true);
-    const { lat, lon } = await getAccurateGps();
-
-    try {
-      const res = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inputEmail.trim(), lat, lon })
-      });
-      const data = await res.json();
-      if (res.ok && data.user) {
-        localStorage.setItem('gram_user_email', data.user.email);
-        localStorage.setItem('gram_user_role', data.user.role);
-        onLoginSuccess(data.user);
-      } else {
-        alert(data.message || data.error || 'Google login failed.');
-      }
-    } catch (err) {
-      console.error(err);
-      alert('Error connecting with Google Sign-In.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-surface flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden">
+      {/* Language Switcher in top right */}
+      <div className="absolute top-4 right-4 z-20">
+        <select
+          value={language}
+          onChange={(e) => setLanguage && setLanguage(e.target.value)}
+          className="bg-white text-on-surface font-headline font-bold text-xs rounded-xl border border-outline-variant px-3 py-1.5 shadow-sm focus:outline-none focus:border-primary cursor-pointer"
+        >
+          <option value="en">English</option>
+          <option value="mr">मराठी</option>
+          <option value="hi">हिंदी</option>
+        </select>
+      </div>
+
       {/* Decorative background drop */}
       <div className="absolute -top-24 -right-24 w-96 h-96 bg-primary-container/10 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute -bottom-24 -left-24 w-96 h-96 bg-secondary-container/20 rounded-full blur-3xl pointer-events-none" />
@@ -115,10 +173,10 @@ export default function LoginView({ onLoginSuccess }) {
             />
           </div>
           <h1 className="font-headline font-bold text-2xl text-primary">
-            Mahurzari Water Portal
+            {t('login_title')}
           </h1>
           <p className="font-body text-xs text-on-surface-variant mt-1">
-            Gram Panchayat Clean & Safe Water Governance
+            {t('login_sub')}
           </p>
         </div>
 
@@ -126,7 +184,7 @@ export default function LoginView({ onLoginSuccess }) {
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div>
             <label className="block text-xs font-headline font-bold text-on-surface uppercase tracking-wider mb-1.5">
-              Gmail / Email ID
+              {t('email_label')}
             </label>
             <div className="relative flex items-center">
               <span className="material-symbols-outlined absolute left-3.5 text-on-surface-variant text-xl pointer-events-none">
@@ -136,15 +194,15 @@ export default function LoginView({ onLoginSuccess }) {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your Gmail or email address"
+                placeholder={t('email_placeholder')}
                 required
                 className="w-full pl-11 pr-4 py-3 bg-surface-container-low text-on-surface text-sm rounded-xl border border-outline-variant focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-on-surface-variant/60 font-body"
               />
             </div>
             {!isOfficial && email.includes('@') && (
-              <p className="text-[11px] text-secondary font-medium mt-1 flex items-center gap-1">
-                <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                Citizen login active: No password required!
+              <p className="text-[11px] text-secondary font-medium mt-1.5 flex items-center gap-1">
+                <span className="material-symbols-outlined text-[15px]">check_circle</span>
+                {t('citizen_login_note')}
               </p>
             )}
           </div>
@@ -153,7 +211,7 @@ export default function LoginView({ onLoginSuccess }) {
           {isOfficial && (
             <div className="animate-fadeIn">
               <label className="block text-xs font-headline font-bold text-on-surface uppercase tracking-wider mb-1.5">
-                Official Staff Password
+                {t('staff_password')}
               </label>
               <div className="relative flex items-center">
                 <span className="material-symbols-outlined absolute left-3.5 text-on-surface-variant text-xl pointer-events-none">
@@ -181,7 +239,7 @@ export default function LoginView({ onLoginSuccess }) {
           )}
 
           {gpsStatus && (
-            <p className="text-[11px] text-on-surface-variant text-center font-medium">
+            <p className="text-[11px] text-primary font-medium text-center">
               📍 {gpsStatus}
             </p>
           )}
@@ -194,11 +252,11 @@ export default function LoginView({ onLoginSuccess }) {
             {loading ? (
               <>
                 <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
-                Signing In...
+                <span>Connecting...</span>
               </>
             ) : (
               <>
-                <span>Enter Portal</span>
+                <span>{t('enter_portal')}</span>
                 <span className="material-symbols-outlined text-base">arrow_forward</span>
               </>
             )}
@@ -214,21 +272,10 @@ export default function LoginView({ onLoginSuccess }) {
           <div className="h-px bg-outline-variant/60 flex-1" />
         </div>
 
-        {/* Google Sign In */}
-        <button
-          type="button"
-          onClick={handleGoogleClick}
-          disabled={loading}
-          className="w-full py-3 bg-white text-[#3c4043] hover:bg-[#f8f9fa] border border-[#dadce0] rounded-xl font-headline font-bold text-xs flex items-center justify-center gap-3 shadow-sm active:scale-[0.98] transition-all"
-        >
-          <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"/>
-            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"/>
-          </svg>
-          <span>Continue with Google</span>
-        </button>
+        {/* Real Official Google Sign In Container (NO window.prompt) */}
+        <div className="flex justify-center w-full min-h-[44px]">
+          <div ref={googleBtnRef} className="w-full flex justify-center" />
+        </div>
 
         {/* Footer */}
         <div className="mt-6 pt-4 border-t border-outline-variant/40 text-center">

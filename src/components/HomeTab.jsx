@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { getTranslation } from '../utils/translations';
 
-export default function HomeTab({ currentUser, setActiveTab }) {
+export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
@@ -8,6 +9,7 @@ export default function HomeTab({ currentUser, setActiveTab }) {
   const [broadcastMsg, setBroadcastMsg] = useState('');
   const [broadcastSending, setBroadcastSending] = useState(false);
 
+  const t = (key) => getTranslation(language, key);
   const isStaff = currentUser && (currentUser.role === 'Admin' || currentUser.role === 'Sarpanch');
 
   const loadFeed = async () => {
@@ -65,7 +67,7 @@ export default function HomeTab({ currentUser, setActiveTab }) {
   const pendingIssues = issues.filter(i => i.status !== 'Resolved');
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto px-3 sm:px-6 py-4 animate-fadeIn">
+    <div className="flex flex-col gap-6 max-w-7xl mx-auto px-3 sm:px-6 py-4 animate-fadeIn pb-20 md:pb-8">
       {/* Hero Village Banner */}
       <section className="bg-gradient-to-r from-primary to-[#0a4b73] text-white p-6 sm:p-8 rounded-3xl shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden">
         <div className="relative z-10">
@@ -75,14 +77,14 @@ export default function HomeTab({ currentUser, setActiveTab }) {
             </span>
             <span className="text-xs text-primary-fixed flex items-center gap-1 font-medium">
               <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              Water Supply Active
+              Live System Active
             </span>
           </div>
           <h2 className="font-headline font-bold text-2xl sm:text-3xl tracking-tight mb-1">
-            Village Water Success
+            {t('village_success')}
           </h2>
           <p className="text-primary-fixed text-sm sm:text-base font-body max-w-md">
-            Together we conserve water, report leakages instantly, and ensure 100% clean drinking water.
+            {t('together_conserve')}
           </p>
           <div className="flex items-center gap-3 mt-4">
             <button
@@ -90,7 +92,7 @@ export default function HomeTab({ currentUser, setActiveTab }) {
               className="px-4 py-2.5 bg-secondary text-white hover:bg-secondary/90 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-2"
             >
               <span className="material-symbols-outlined text-base">add_location_alt</span>
-              Report Leak / Issue
+              {t('report_leak')}
             </button>
             {isStaff && (
               <button
@@ -98,7 +100,7 @@ export default function HomeTab({ currentUser, setActiveTab }) {
                 className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-headline font-bold text-xs uppercase tracking-wider rounded-xl border border-white/20 active:scale-95 transition-all flex items-center gap-2"
               >
                 <span className="material-symbols-outlined text-base">campaign</span>
-                Broadcast Notice
+                {t('broadcast_notice')}
               </button>
             )}
           </div>
@@ -118,7 +120,7 @@ export default function HomeTab({ currentUser, setActiveTab }) {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2 text-primary">
                 <span className="material-symbols-outlined text-2xl">campaign</span>
-                <h3 className="font-headline font-bold text-lg">Send Village Announcement</h3>
+                <h3 className="font-headline font-bold text-lg">{t('broadcast_notice')}</h3>
               </div>
               <button onClick={() => setBroadcastOpen(false)} className="text-on-surface-variant hover:text-on-surface">
                 <span className="material-symbols-outlined">close</span>
@@ -129,7 +131,7 @@ export default function HomeTab({ currentUser, setActiveTab }) {
                 <label className="text-xs font-headline font-bold uppercase text-on-surface mb-1 block">Notice Title</label>
                 <input
                   type="text"
-                  placeholder="e.g. Tomorrow Water Supply Timing"
+                  placeholder="e.g. Water Pipeline Maintenance Notice"
                   value={broadcastTitle}
                   onChange={(e) => setBroadcastTitle(e.target.value)}
                   required
@@ -160,7 +162,7 @@ export default function HomeTab({ currentUser, setActiveTab }) {
                   disabled={broadcastSending}
                   className="px-4 py-2 bg-primary text-white rounded-xl text-xs font-bold font-headline uppercase shadow-md flex items-center gap-1.5"
                 >
-                  {broadcastSending ? 'Sending...' : 'Broadcast to Village'}
+                  {broadcastSending ? 'Sending...' : 'Broadcast'}
                 </button>
               </div>
             </form>
@@ -168,46 +170,36 @@ export default function HomeTab({ currentUser, setActiveTab }) {
         </div>
       )}
 
-      {/* 3 Metrics Quick Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white p-4 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
-          <span className="text-xs font-headline font-bold text-on-surface-variant uppercase tracking-wider">
-            Resolved Leaks
-          </span>
-          <span className="text-2xl sm:text-3xl font-headline font-extrabold text-secondary mt-1">
+      {/* ONLY Real Live Metrics Cards (Fake Water Purity & Daily Supply REMOVED) */}
+      <div className="grid grid-cols-2 gap-4">
+        <div className="bg-white p-5 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-secondary text-2xl">verified</span>
+            <span className="text-xs font-headline font-bold text-on-surface-variant uppercase tracking-wider">
+              {t('resolved_leaks')}
+            </span>
+          </div>
+          <span className="text-3xl sm:text-4xl font-headline font-extrabold text-secondary mt-2">
             {resolvedIssues.length}
           </span>
-          <span className="text-[11px] text-on-surface-variant mt-0.5">Community repaired</span>
+          <span className="text-xs text-on-surface-variant mt-1 font-body">
+            {t('community_repaired')}
+          </span>
         </div>
 
-        <div className="bg-white p-4 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
-          <span className="text-xs font-headline font-bold text-on-surface-variant uppercase tracking-wider">
-            Active Issues
-          </span>
-          <span className="text-2xl sm:text-3xl font-headline font-extrabold text-error mt-1">
+        <div className="bg-white p-5 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-error text-2xl">construction</span>
+            <span className="text-xs font-headline font-bold text-on-surface-variant uppercase tracking-wider">
+              {t('active_issues')}
+            </span>
+          </div>
+          <span className="text-3xl sm:text-4xl font-headline font-extrabold text-error mt-2">
             {pendingIssues.length}
           </span>
-          <span className="text-[11px] text-on-surface-variant mt-0.5">Under maintenance</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
-          <span className="text-xs font-headline font-bold text-on-surface-variant uppercase tracking-wider">
-            Water Purity
+          <span className="text-xs text-on-surface-variant mt-1 font-body">
+            {t('under_maintenance')}
           </span>
-          <span className="text-2xl sm:text-3xl font-headline font-extrabold text-primary mt-1">
-            99.4%
-          </span>
-          <span className="text-[11px] text-secondary font-medium mt-0.5">WHO Standard OK</span>
-        </div>
-
-        <div className="bg-white p-4 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
-          <span className="text-xs font-headline font-bold text-on-surface-variant uppercase tracking-wider">
-            Daily Supply
-          </span>
-          <span className="text-2xl sm:text-3xl font-headline font-extrabold text-primary mt-1">
-            180k L
-          </span>
-          <span className="text-[11px] text-on-surface-variant mt-0.5">Morning & Evening</span>
         </div>
       </div>
 
@@ -215,47 +207,47 @@ export default function HomeTab({ currentUser, setActiveTab }) {
       <section className="bg-white p-6 rounded-3xl border border-outline-variant/60 shadow-sm">
         <h3 className="font-headline font-bold text-lg text-primary mb-4 flex items-center gap-2">
           <span className="material-symbols-outlined text-xl text-secondary">help_outline</span>
-          How Citizen Water Reporting Works
+          {t('how_it_works')}
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="flex items-start gap-3 p-3 bg-surface-container-low rounded-2xl">
+          <div className="flex items-start gap-3 p-4 bg-surface-container-low rounded-2xl">
             <div className="w-10 h-10 rounded-xl bg-secondary text-white flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
               1
             </div>
             <div>
               <h4 className="font-headline font-bold text-xs uppercase tracking-wider text-primary">
-                Report Issue
+                {t('step1_title')}
               </h4>
-              <p className="text-xs text-on-surface-variant mt-1 font-body">
-                Spot a pipeline leak, contaminated water, or broken tap? Take a photo and submit with exact GPS.
+              <p className="text-xs text-on-surface-variant mt-1 font-body leading-relaxed">
+                {t('step1_desc')}
               </p>
             </div>
           </div>
 
-          <div className="flex items-start gap-3 p-3 bg-surface-container-low rounded-2xl">
+          <div className="flex items-start gap-3 p-4 bg-surface-container-low rounded-2xl">
             <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
               2
             </div>
             <div>
               <h4 className="font-headline font-bold text-xs uppercase tracking-wider text-primary">
-                Panchayat Verification
+                {t('step2_title')}
               </h4>
-              <p className="text-xs text-on-surface-variant mt-1 font-body">
-                Sarpanch & technical team review the issue on the live map and assign a local plumber/repair crew.
+              <p className="text-xs text-on-surface-variant mt-1 font-body leading-relaxed">
+                {t('step2_desc')}
               </p>
             </div>
           </div>
 
-          <div className="flex items-start gap-3 p-3 bg-surface-container-low rounded-2xl">
+          <div className="flex items-start gap-3 p-4 bg-surface-container-low rounded-2xl">
             <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
               3
             </div>
             <div>
               <h4 className="font-headline font-bold text-xs uppercase tracking-wider text-primary">
-                Resolved with Proof
+                {t('step3_title')}
               </h4>
-              <p className="text-xs text-on-surface-variant mt-1 font-body">
-                Technician uploads the 'After' repair photo. The issue is closed and reported to the village feed.
+              <p className="text-xs text-on-surface-variant mt-1 font-body leading-relaxed">
+                {t('step3_desc')}
               </p>
             </div>
           </div>
@@ -267,10 +259,10 @@ export default function HomeTab({ currentUser, setActiveTab }) {
         <div className="flex items-center justify-between">
           <h3 className="font-headline font-bold text-lg text-primary flex items-center gap-2">
             <span className="material-symbols-outlined text-xl text-primary">feed</span>
-            Community Solved & Active Feed
+            {t('community_feed')}
           </h3>
           <span className="text-xs text-on-surface-variant font-medium">
-            Live updates
+            {t('live_updates')}
           </span>
         </div>
 
@@ -300,7 +292,7 @@ export default function HomeTab({ currentUser, setActiveTab }) {
                       ? 'bg-secondary-container text-secondary' 
                       : 'bg-error-container text-on-error-container'
                   }`}>
-                    {item.status}
+                    {item.status === 'Resolved' ? t('after_fixed') : t('pending')}
                   </span>
                 </div>
 
@@ -308,7 +300,7 @@ export default function HomeTab({ currentUser, setActiveTab }) {
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative rounded-xl overflow-hidden bg-surface-container aspect-video">
                     <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase z-10">
-                      Before
+                      {t('before')}
                     </span>
                     <img 
                       src={item.photoUrl || 'https://images.unsplash.com/photo-1584467735815-f778f274e296?auto=format&fit=crop&q=80&w=400'} 
@@ -320,7 +312,7 @@ export default function HomeTab({ currentUser, setActiveTab }) {
                     <span className={`absolute top-1.5 left-1.5 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase z-10 ${
                       item.status === 'Resolved' ? 'bg-secondary' : 'bg-black/50'
                     }`}>
-                      {item.status === 'Resolved' ? 'After (Fixed)' : 'Pending'}
+                      {item.status === 'Resolved' ? t('after_fixed') : t('pending')}
                     </span>
                     <img 
                       src={item.resolutionPhotoUrl || item.photoUrl || 'https://images.unsplash.com/photo-1541888946425-d0fbb186c5f7?auto=format&fit=crop&q=80&w=400'} 

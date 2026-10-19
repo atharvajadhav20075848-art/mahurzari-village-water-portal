@@ -1,22 +1,24 @@
 import React from 'react';
+import { getTranslation } from '../utils/translations';
 
 export default function Navbar({ 
   currentUser, 
   activeTab, 
   setActiveTab, 
   onLogout, 
-  language, 
-  setLanguage,
-  unreadCount 
+  language = 'en', 
+  setLanguage 
 }) {
+  const t = (key) => getTranslation(language, key);
+
   const getTabTitle = (tab) => {
     switch (tab) {
-      case 'home': return 'Home';
-      case 'report': return 'Report Issue';
-      case 'tasks': return 'Tasks';
-      case 'admin': return 'Admin Live Control';
-      case 'support': return 'Helpline & Support';
-      default: return 'Gram Jal';
+      case 'home': return t('home');
+      case 'report': return t('report');
+      case 'tasks': return t('tasks');
+      case 'admin': return t('admin');
+      case 'support': return t('support');
+      default: return t('portal_title');
     }
   };
 
@@ -38,10 +40,10 @@ export default function Navbar({
             />
             <div className="flex flex-col">
               <span className="font-headline font-bold text-base sm:text-lg text-primary leading-tight tracking-tight">
-                Gram Jal
+                {t('portal_title')}
               </span>
               <span className="text-[10px] text-on-surface-variant font-medium hidden sm:inline leading-none">
-                Mahurzari Water Portal
+                {t('portal_subtitle')}
               </span>
             </div>
           </button>
@@ -57,7 +59,7 @@ export default function Navbar({
               }`}
             >
               <span className="material-symbols-outlined text-[18px]">home</span>
-              Home
+              {t('home')}
             </button>
 
             <button
@@ -69,7 +71,7 @@ export default function Navbar({
               }`}
             >
               <span className="material-symbols-outlined text-[18px]">report_problem</span>
-              Report
+              {t('report')}
             </button>
 
             {isStaff && (
@@ -82,7 +84,7 @@ export default function Navbar({
                 }`}
               >
                 <span className="material-symbols-outlined text-[18px]">assignment_turned_in</span>
-                Tasks
+                {t('tasks')}
               </button>
             )}
 
@@ -96,7 +98,7 @@ export default function Navbar({
                 }`}
               >
                 <span className="material-symbols-outlined text-[18px]">monitoring</span>
-                Admin
+                {t('admin')}
               </button>
             )}
 
@@ -109,7 +111,7 @@ export default function Navbar({
               }`}
             >
               <span className="material-symbols-outlined text-[18px]">support_agent</span>
-              Support
+              {t('support')}
             </button>
           </nav>
         </div>
@@ -155,7 +157,7 @@ export default function Navbar({
           <button 
             onClick={onLogout} 
             className="p-1.5 text-error hover:bg-error/10 active:scale-95 rounded-lg transition-all flex items-center justify-center" 
-            title="Logout"
+            title={t('logout')}
           >
             <span className="material-symbols-outlined text-[20px]">logout</span>
           </button>

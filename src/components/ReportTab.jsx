@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { getTranslation } from '../utils/translations';
 
 const ISSUE_CATEGORIES = [
   { id: 'Water Related Issue', label: 'Water Related Issue', icon: 'water_drop' },
@@ -11,7 +12,7 @@ const ISSUE_CATEGORIES = [
 
 const COOLDOWN_MS = 5 * 60 * 1000; // 5 minutes
 
-export default function ReportTab({ currentUser, setActiveTab }) {
+export default function ReportTab({ currentUser, setActiveTab, language = 'en' }) {
   const [selectedType, setSelectedType] = useState('Water Related Issue');
   const [description, setDescription] = useState('');
   const [photoFile, setPhotoFile] = useState(null);
@@ -24,6 +25,8 @@ export default function ReportTab({ currentUser, setActiveTab }) {
   const mapContainerRef = useRef(null);
   const leafletMapRef = useRef(null);
   const markerRef = useRef(null);
+
+  const t = (key) => getTranslation(language, key);
 
   // 1. High-Accuracy Location Fetcher
   const acquireHighAccuracyGps = () => {
@@ -67,12 +70,18 @@ export default function ReportTab({ currentUser, setActiveTab }) {
     );
   };
 
-  // 2. Initialize Mini Leaflet Map
+  // 2. Initialize Mini Leaflet Map reliably
   useEffect(() => {
     acquireHighAccuracyGps();
 
-    const timer = setTimeout(() => {
-      if (mapContainerRef.current && window.L && !leafletMapRef.current) {
+    const initMiniMap = () => {
+      if (!mapContainerRef.current) return;
+      if (!window.L) {
+        setTimeout(initMiniMap, 200);
+        return;
+      }
+
+      if (!leafletMapRef.current) {
         const defaultLat = 21.1822;
         const defaultLon = 79.0668;
         const map = window.L.map(mapContainerRef.current, {
@@ -87,8 +96,15 @@ export default function ReportTab({ currentUser, setActiveTab }) {
         markerRef.current = window.L.marker([defaultLat, defaultLon]).addTo(map);
         leafletMapRef.current = map;
       }
-    }, 200);
 
+      if (leafletMapRef.current) {
+        setTimeout(() => {
+          leafletMapRef.current.invalidateSize();
+        }, 150);
+      }
+    };
+
+    const timer = setTimeout(initMiniMap, 100);
     return () => {
       clearTimeout(timer);
       if (leafletMapRef.current) {
@@ -201,7 +217,7 @@ export default function ReportTab({ currentUser, setActiveTab }) {
         <div>
           <div className="flex items-center justify-between">
             <h2 className="font-headline font-bold text-xl sm:text-2xl text-primary">
-              Report Water Issue
+              {t('report_title')}
             </h2>
             <span className="text-xs bg-primary/10 text-primary font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
               1-Click GPS
@@ -215,7 +231,7 @@ export default function ReportTab({ currentUser, setActiveTab }) {
         {/* Issue Type Pills */}
         <div>
           <label className="text-xs font-headline font-bold uppercase text-on-surface mb-2 block">
-            Select Problem Category
+            {t('select_category')}
           </label>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {ISSUE_CATEGORIES.map((cat) => (
@@ -223,7 +239,7 @@ export default function ReportTab({ currentUser, setActiveTab }) {
                 key={cat.id}
                 type="button"
                 onClick={() => setSelectedType(cat.id)}
-                className={`p-3 rounded-2xl border text-left flex flex-col items-start gap-1.5 transition-all ${
+                className={`p-3 rounded-2xl border text-left flex flex-col items-start gap-1.5 transition-all cursor-pointer ${
                   selectedType === cat.id
                     ? 'border-primary bg-primary/5 text-primary shadow-sm font-bold scale-[1.02]'
                     : 'border-outline-variant bg-surface hover:bg-surface-container-low text-on-surface'
@@ -246,18 +262,18 @@ export default function ReportTab({ currentUser, setActiveTab }) {
         <div className="flex flex-col gap-2">
           <div className="flex items-center justify-between">
             <label className="text-xs font-headline font-bold uppercase text-on-surface">
-              Exact Incident Spot (High Accuracy GPS)
+              {t('exact_spot')}
             </label>
             <button
               type="button"
               onClick={acquireHighAccuracyGps}
               disabled={isLocating}
-              className="text-xs text-primary font-bold flex items-center gap-1 hover:underline disabled:opacity-50"
+              className="text-xs text-primary font-bold flex items-center gap-1 hover:underline disabled:opacity-50 cursor-pointer"
             >
               <span className={`material-symbols-outlined text-sm ${isLocating ? 'animate-spin' : ''}`}>
                 my_location
               </span>
-              Refresh GPS
+              {t('refresh_gps')}
             </button>
           </div>
 
@@ -276,19 +292,20 @@ export default function ReportTab({ currentUser, setActiveTab }) {
           {/* Mini Leaflet Preview */}
           <div 
             ref={mapContainerRef} 
-            className="w-full h-36 rounded-2xl overflow-hidden border border-outline-variant/80 shadow-inner z-0" 
+            style={{ height: '160px' }}
+            className="w-full rounded-2xl overflow-hidden border border-outline-variant/80 shadow-inner z-0" 
           />
         </div>
 
         {/* Photo Upload */}
         <div>
           <label className="text-xs font-headline font-bold uppercase text-on-surface mb-2 block">
-            Add Photo Evidence (Recommended)
+            {t('photo_evidence')}
           </label>
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <label className="w-full sm:w-auto px-4 py-3 bg-surface-container hover:bg-surface-container-high border border-outline-variant text-on-surface rounded-2xl font-headline font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition-all">
               <span className="material-symbols-outlined text-lg text-primary">add_a_photo</span>
-              <span>Take / Upload Photo</span>
+              <span>{t('take_photo')}</span>
               <input
                 type="file"
                 accept="image/*"
@@ -316,13 +333,13 @@ export default function ReportTab({ currentUser, setActiveTab }) {
         {/* Description Input */}
         <div>
           <label className="text-xs font-headline font-bold uppercase text-on-surface mb-1.5 block">
-            Detailed Description
+            {t('description')}
           </label>
           <textarea
             rows={3}
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="e.g. Pipeline leak near Ward No. 3 primary school. Water leaking on main road since morning..."
+            placeholder={t('desc_placeholder')}
             className="w-full p-3.5 bg-surface-container-low text-on-surface text-sm rounded-2xl border border-outline-variant focus:outline-none focus:border-primary font-body"
           />
         </div>
@@ -332,7 +349,7 @@ export default function ReportTab({ currentUser, setActiveTab }) {
           {cooldownRemaining > 0 ? (
             <div className="w-full py-4 bg-surface-container-high border-2 border-outline-variant text-on-surface-variant font-headline font-bold text-xs uppercase tracking-wider rounded-2xl flex items-center justify-center gap-2 cursor-not-allowed">
               <span className="material-symbols-outlined text-lg text-error animate-pulse">timer</span>
-              <span>Next Report in {minutesRemaining}m {secondsRemaining < 10 ? '0' : ''}{secondsRemaining}s</span>
+              <span>{t('next_report_in')} {minutesRemaining}m {secondsRemaining < 10 ? '0' : ''}{secondsRemaining}s</span>
             </div>
           ) : (
             <button
@@ -344,19 +361,19 @@ export default function ReportTab({ currentUser, setActiveTab }) {
               {submitting ? (
                 <>
                   <span className="material-symbols-outlined animate-spin text-lg">progress_activity</span>
-                  <span>Submitting to Panchayat...</span>
+                  <span>{t('submitting')}</span>
                 </>
               ) : (
                 <>
                   <span className="material-symbols-outlined text-lg">send</span>
-                  <span>Submit Water Report</span>
+                  <span>{t('submit_report')}</span>
                 </>
               )}
             </button>
           )}
 
           <p className="text-[11px] text-on-surface-variant text-center mt-2 font-body">
-            🛡️ Spam Protection: 1 complaint per 5 minutes per device.
+            🛡️ {t('rate_limit_notice')}
           </p>
         </div>
       </div>

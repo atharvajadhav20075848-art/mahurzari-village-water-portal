@@ -1,6 +1,9 @@
 import React from 'react';
+import { getTranslation } from '../utils/translations';
 
-export default function SupportTab() {
+export default function SupportTab({ language = 'en' }) {
+  const t = (key) => getTranslation(language, key);
+
   return (
     <div className="max-w-2xl mx-auto px-3 sm:px-6 py-4 animate-fadeIn pb-24 md:pb-8 flex flex-col gap-6">
       {/* Header */}
@@ -9,10 +12,10 @@ export default function SupportTab() {
           <span className="material-symbols-outlined text-3xl">support_agent</span>
         </div>
         <h2 className="font-headline font-bold text-2xl text-primary">
-          Village Water Helpline & Support
+          {t('helpline_title')}
         </h2>
         <p className="text-xs text-on-surface-variant font-body mt-1 max-w-md">
-          Gram Panchayat Mahurzari is available 24/7 for urgent pipeline bursts, contamination alerts, and clean water assistance.
+          {t('helpline_desc')}
         </p>
 
         {/* 3 Direct Contact Action Buttons */}
@@ -23,7 +26,7 @@ export default function SupportTab() {
             className="p-3.5 bg-primary text-white hover:bg-primary/95 font-headline font-bold text-xs uppercase tracking-wider rounded-2xl shadow-sm active:scale-95 transition-all flex flex-col items-center justify-center gap-1.5"
           >
             <span className="material-symbols-outlined text-2xl">call</span>
-            <span>Call Toll-Free</span>
+            <span>{t('call_toll_free')}</span>
             <span className="text-[10px] text-primary-fixed font-mono font-normal">1800-120-8040</span>
           </a>
 
@@ -35,7 +38,7 @@ export default function SupportTab() {
             className="p-3.5 bg-emerald-600 text-white hover:bg-emerald-700 font-headline font-bold text-xs uppercase tracking-wider rounded-2xl shadow-sm active:scale-95 transition-all flex flex-col items-center justify-center gap-1.5"
           >
             <span className="material-symbols-outlined text-2xl">chat</span>
-            <span>WhatsApp Chat</span>
+            <span>{t('whatsapp_chat')}</span>
             <span className="text-[10px] text-green-100 font-normal">Direct Helpline</span>
           </a>
 
@@ -45,7 +48,7 @@ export default function SupportTab() {
             className="p-3.5 bg-secondary text-white hover:bg-secondary/95 font-headline font-bold text-xs uppercase tracking-wider rounded-2xl shadow-sm active:scale-95 transition-all flex flex-col items-center justify-center gap-1.5"
           >
             <span className="material-symbols-outlined text-2xl">mail</span>
-            <span>Official Email</span>
+            <span>{t('official_email')}</span>
             <span className="text-[10px] text-secondary-fixed font-normal">water@village.gov</span>
           </a>
         </div>
@@ -55,7 +58,7 @@ export default function SupportTab() {
       <div className="bg-white rounded-3xl border border-outline-variant/60 p-6 shadow-sm flex flex-col gap-4">
         <div className="flex items-center gap-2 text-primary">
           <span className="material-symbols-outlined text-xl text-secondary">schedule</span>
-          <h3 className="font-headline font-bold text-base">Gram Panchayat Office Hours</h3>
+          <h3 className="font-headline font-bold text-base">{t('office_hours')}</h3>
         </div>
 
         <div className="divide-y divide-outline-variant/40 text-xs font-body">
@@ -76,7 +79,7 @@ export default function SupportTab() {
         <div className="p-3.5 bg-surface-container-low rounded-2xl flex items-start gap-2.5 text-xs text-on-surface-variant font-body">
           <span className="material-symbols-outlined text-primary text-lg shrink-0 mt-0.5">location_on</span>
           <div>
-            <strong className="text-on-surface block font-headline">Office Location:</strong>
+            <strong className="text-on-surface block font-headline">{t('office_loc')}</strong>
             Mahurzari Gram Panchayat Bhavan, Main Market Chowk, Mahurzari Village, District Nagpur, Maharashtra.
           </div>
         </div>

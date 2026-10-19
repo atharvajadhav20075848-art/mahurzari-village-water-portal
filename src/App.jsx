@@ -13,12 +13,16 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
-  const [language, setLanguage] = useState('en');
+  const [language, setLanguage] = useState(() => localStorage.getItem('gram_lang') || 'en');
   const [emergencyAlert, setEmergencyAlert] = useState(null);
+
+  const handleLanguageChange = (newLang) => {
+    setLanguage(newLang);
+    localStorage.setItem('gram_lang', newLang);
+  };
 
   // 1. Initial Path Detection & Auth Check
   useEffect(() => {
-    // Detect tab from URL path
     const path = window.location.pathname.replace(/^\//, '').toLowerCase();
     if (['home', 'report', 'tasks', 'admin', 'support'].includes(path)) {
       setActiveTab(path);
@@ -34,7 +38,6 @@ export default function App() {
         if (data.loggedIn && data.user) {
           setCurrentUser(data.user);
         } else if (savedEmail) {
-          // Fallback if local session exists
           const role = localStorage.getItem('gram_user_role') || 'People/User';
           const name = savedEmail.includes('@') ? savedEmail.split('@')[0] : 'Citizen';
           setCurrentUser({ email: savedEmail, role, name });
@@ -56,7 +59,23 @@ export default function App() {
     checkSession();
   }, []);
 
-  // 2. Browser History Sync for 0ms Tab Switching
+  // 2. Real-time Heartbeat for live user tracking
+  useEffect(() => {
+    if (currentUser && currentUser.email) {
+      const sendHeartbeat = () => {
+        fetch('/api/heartbeat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: currentUser.email })
+        }).catch(() => {});
+      };
+      sendHeartbeat();
+      const hbInterval = setInterval(sendHeartbeat, 60000); // Every 60 seconds
+      return () => clearInterval(hbInterval);
+    }
+  }, [currentUser]);
+
+  // 3. Browser History Sync for 0ms Tab Switching
   const handleTabSwitch = (tab) => {
     setActiveTab(tab);
     try {
@@ -65,7 +84,7 @@ export default function App() {
     } catch (e) {}
   };
 
-  // 3. Listen to browser Back/Forward navigation
+  // 4. Listen to browser Back/Forward navigation
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname.replace(/^\//, '').toLowerCase();
@@ -79,7 +98,7 @@ export default function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // 4. Poll for Emergency Broadcast Siren
+  // 5. Poll for Emergency Broadcast Siren
   useEffect(() => {
     const pollAlerts = async () => {
       try {
@@ -103,13 +122,18 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // 5. Logout Handler
+  // 6. Logout Handler
   const handleLogout = async () => {
     if (!confirm("Are you sure you want to log out?")) return;
+    const emailToLogout = currentUser?.email || localStorage.getItem('gram_user_email');
     localStorage.removeItem('gram_user_email');
     localStorage.removeItem('gram_user_role');
     try {
-      await fetch('/api/auth/logout', { method: 'POST' });
+      await fetch('/api/auth/logout', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailToLogout })
+      });
     } catch (e) {}
     setCurrentUser(null);
     window.history.pushState(null, '', '/login');
@@ -131,6 +155,8 @@ export default function App() {
   if (!currentUser) {
     return (
       <LoginView
+        language={language}
+        setLanguage={handleLanguageChange}
         onLoginSuccess={(user) => {
           setCurrentUser(user);
           setActiveTab('home');
@@ -149,10 +175,10 @@ export default function App() {
         setActiveTab={handleTabSwitch}
         onLogout={handleLogout}
         language={language}
-        setLanguage={setLanguage}
+        setLanguage={handleLanguageChange}
       />
 
-      {/* Main Content Area (pt-16 accounts for fixed navbar) */}
+      {/* Main Content Area */}
       <main className="flex-1 pt-16">
         {/* Emergency Alert Banner if Active */}
         {emergencyAlert && (
@@ -181,23 +207,39 @@ export default function App() {
         {/* 0ms Instantaneous Tab Views */}
         <div className="w-full">
           {activeTab === 'home' && (
-            <HomeTab currentUser={currentUser} setActiveTab={handleTabSwitch} />
+            <HomeTab 
+              currentUser={currentUser} 
+              setActiveTab={handleTabSwitch} 
+              language={language} 
+            />
           )}
 
           {activeTab === 'report' && (
-            <ReportTab currentUser={currentUser} setActiveTab={handleTabSwitch} />
+            <ReportTab 
+              currentUser={currentUser} 
+              setActiveTab={handleTabSwitch} 
+              language={language} 
+            />
           )}
 
           {activeTab === 'tasks' && (
-            <TasksTab currentUser={currentUser} />
+            <TasksTab 
+              currentUser={currentUser} 
+              language={language} 
+            />
           )}
 
           {activeTab === 'admin' && (
-            <AdminTab currentUser={currentUser} />
+            <AdminTab 
+              currentUser={currentUser} 
+              language={language} 
+            />
           )}
 
           {activeTab === 'support' && (
-            <SupportTab />
+            <SupportTab 
+              language={language} 
+            />
           )}
         </div>
       </main>
@@ -207,6 +249,7 @@ export default function App() {
         currentUser={currentUser}
         activeTab={activeTab}
         setActiveTab={handleTabSwitch}
+        language={language}
       />
     </div>
   );

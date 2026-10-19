@@ -520,8 +520,11 @@ app.get('/api/auth/status', async (req, res) => {
 });
 
 app.post('/api/auth/logout', async (req, res) => {
-  if (req.session.user) {
-    await ActiveSession.findOneAndDelete({ email: req.session.user.email });
+  const email = (req.body?.email || req.session?.user?.email || (req.headers['x-user-email'] ? decodeURIComponent(req.headers['x-user-email']) : '')).toLowerCase().trim();
+  if (email) {
+    await ActiveSession.findOneAndDelete({ email });
+  }
+  if (req.session?.user) {
     await Feed.create({
       id: Date.now(),
       name: req.session.user.name,
@@ -532,7 +535,7 @@ app.post('/api/auth/logout', async (req, res) => {
       phone: 'N/A'
     });
   }
-  req.session.destroy(() => {
+  req.session?.destroy(() => {
     res.clearCookie('connect.sid');
     res.json({ success: true });
   });
@@ -758,15 +761,20 @@ app.get('/api/issues', async (req, res) => {
   res.json(issues);
 });
 
-// Live Map Data (Active Users with real GPS & Reported Issues with real GPS)
+// Live Map Data (Only REAL Online Users in the last 15 minutes)
 app.get('/api/live-map', async (req, res) => {
   try {
+    const activeWindow = new Date(Date.now() - 15 * 60 * 1000); // Last 15 minutes
+
+    // Purge old stale sessions from database
+    await ActiveSession.deleteMany({ updatedAt: { $lt: activeWindow } });
+
     const totalUsers = await User.countDocuments();
-    const activeSessionsCount = await ActiveSession.countDocuments();
+    const activeSessionsCount = await ActiveSession.countDocuments({ updatedAt: { $gte: activeWindow } });
     const activeReports = await Issue.countDocuments({ status: { $ne: 'Resolved' } });
     const resolvedReports = await Issue.countDocuments({ status: 'Resolved' });
 
-    const liveUsers = await ActiveSession.find({}, { _id: 0, __v: 0 }).sort({ updatedAt: -1 }).limit(100);
+    const liveUsers = await ActiveSession.find({ updatedAt: { $gte: activeWindow } }, { _id: 0, __v: 0 }).sort({ updatedAt: -1 }).limit(50);
     const issues = await Issue.find({}, { _id: 0, __v: 0 }).sort({ createdAt: -1 }).limit(100);
 
     res.json({
@@ -781,6 +789,23 @@ app.get('/api/live-map', async (req, res) => {
     });
   } catch (e) {
     res.status(500).json({ error: e.message });
+  }
+});
+
+// Real-time Heartbeat to keep active user session fresh
+app.post('/api/heartbeat', async (req, res) => {
+  try {
+    const userEmail = (req.body?.email || req.session?.user?.email || (req.headers['x-user-email'] ? decodeURIComponent(req.headers['x-user-email']) : '')).toLowerCase().trim();
+    if (userEmail) {
+      await ActiveSession.findOneAndUpdate(
+        { email: userEmail },
+        { updatedAt: new Date() },
+        { upsert: false }
+      );
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    res.json({ ok: false });
   }
 });
 
