@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Gram Jal - Mahurzari Village Water Portal</title>
+  
+  <!-- Fonts & Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@500;600;700;800&family=Atkinson+Hyperlegible+Next:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+  
+  <!-- Leaflet Map CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+  <!-- PWA Meta -->
+  <link rel="manifest" href="/public/manifest.json">
+  <meta name="theme-color" content="#003b5a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Gram Jal">
+  
+  <!-- Tailwind CSS CDN for instant rapid styling & design fidelity -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#003b5a",
+            "primary-container": "#1a5276",
+            "primary-fixed": "#cbe6ff",
+            "on-primary": "#ffffff",
+            secondary: "#006b58",
+            "secondary-container": "#99f4da",
+            "secondary-fixed": "#99f4da",
+            "on-secondary": "#ffffff",
+            surface: "#fff8f5",
+            "surface-container": "#ffeadb",
+            "surface-container-low": "#fff1e8",
+            "surface-container-high": "#ffe3cd",
+            "on-surface": "#2c1602",
+            "on-surface-variant": "#41474e",
+            error: "#ba1a1a",
+            "error-container": "#ffdad6",
+            "on-error-container": "#93000a",
+            outline: "#72787f",
+            "outline-variant": "#c1c7cf"
+          },
+          fontFamily: {
+            headline: ["Public Sans", "sans-serif"],
+            body: ["Atkinson Hyperlegible Next", "sans-serif"]
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    @layer base {
+      .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+      .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+      body { -webkit-tap-highlight-color: transparent; }
+    }
+    /* Smooth custom scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #fff1e8; }
+    ::-webkit-scrollbar-thumb { background: #c1c7cf; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #003b5a; }
+  </style>
+</head>
+<body class="bg-surface text-on-surface font-body antialiased selection:bg-primary selection:text-white">
+  <div id="root"></div>
+  <script type="module" src="/src/main.jsx"></script>
+</body>
+</html>

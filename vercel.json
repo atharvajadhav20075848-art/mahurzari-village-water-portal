@@ -6,11 +6,19 @@
       "use": "@vercel/node"
     },
     {
+      "src": "dist/**",
+      "use": "@vercel/static"
+    },
+    {
       "src": "public/**",
       "use": "@vercel/static"
     }
   ],
   "routes": [
+    {
+      "src": "/assets/(.*)",
+      "dest": "/dist/assets/$1"
+    },
     {
       "src": "/public/(.*)",
       "dest": "/public/$1"

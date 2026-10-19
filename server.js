@@ -27,6 +27,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname)));
+app.use(express.static(path.join(__dirname, 'dist')));
+app.use('/assets', express.static(path.join(__dirname, 'dist', 'assets')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.set('trust proxy', true);
 
@@ -982,31 +984,18 @@ app.put('/api/issues/:id/resolve', uploadSafe('photo'), async (req, res) => {
   res.json({ success: true, issue: updated });
 });
 
-// HTML Pages Setup
-const pages = {
-  '/login': 'login_demo_role_detection',
-  '/home': 'village_progress_home',
-  '/report': 'report_an_issue',
-  '/admin': 'admin_live_user_tracking',
-  '/tasks': 'sarpanch_task_verification',
-  '/support': 'contact_support'
-};
-
-Object.entries(pages).forEach(([route, folder]) => {
+// ── Ultra-Fast React Single Page Application (0ms Tab Switching) ───
+const spaRoutes = ['/', '/app', '/mobile', '/admin', '/tasks', '/home', '/report', '/support', '/login'];
+spaRoutes.forEach((route) => {
   app.get(route, (req, res) => {
-    res.sendFile(path.join(__dirname, folder, 'code.html'));
+    const distIndex = path.join(__dirname, 'dist', 'index.html');
+    if (fs.existsSync(distIndex)) {
+      return res.sendFile(distIndex);
+    }
+    // Fallback to public/app.html
+    res.sendFile(path.join(__dirname, 'public', 'app.html'));
   });
 });
-
-// Mobile App Route (Same original design system)
-app.get('/app', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'app.html'));
-});
-app.get('/mobile', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'app.html'));
-});
-
-app.get('/', (req, res) => res.redirect('/login'));
 
 // Start the server
 const PORT = process.env.PORT || 3000;
