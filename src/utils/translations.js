@@ -112,7 +112,14 @@ export const translations = {
     password_required: "Please enter a new password.",
     password_too_short: "Password must be at least 4 characters.",
     saving: "Saving...",
-    cancel: "Cancel"
+    cancel: "Cancel",
+    user_roles: "Users & Access Roles",
+    assign_role: "Change Role & Access",
+    role_citizen: "Citizen (Resident)",
+    role_plumber: "Plumber (Field Crew)",
+    role_sarpanch: "Sarpanch (Panchayat Head)",
+    role_admin: "Admin (Panchayat Official)",
+    role_updated_success: "User role & access updated successfully!"
   },
   mr: {
     portal_title: "ग्राम जल",
@@ -227,7 +234,14 @@ export const translations = {
     password_required: "कृपया नवीन पासवर्ड टाका.",
     password_too_short: "पासवर्ड किमान ४ अक्षरांचा असावा.",
     saving: "जतन करत आहे...",
-    cancel: "रद्द करा"
+    cancel: "रद्द करा",
+    user_roles: "वापरकर्ते व भूमिका नियंत्रण",
+    assign_role: "भूमिका व अधिकार बदला",
+    role_citizen: "ग्रामस्थ / नागरिक",
+    role_plumber: "प्लंबर (दुरुस्ती दल)",
+    role_sarpanch: "ग्राम सरपंच (प्रमुख)",
+    role_admin: "पंचायत प्रशासक (Admin)",
+    role_updated_success: "वापरकर्ता भूमिका यशस्वीरीत्या बदलली!"
   },
   hi: {
     portal_title: "ग्राम जल",
@@ -342,7 +356,14 @@ export const translations = {
     password_required: "कृपया नया पासवर्ड दर्ज करें।",
     password_too_short: "पासवर्ड कम से कम ४ अक्षरों का होना चाहिए।",
     saving: "सुरक्षित कर रहे हैं...",
-    cancel: "रद्द करें"
+    cancel: "रद्द करें",
+    user_roles: "उपयोगकर्ता व पद नियंत्रण",
+    assign_role: "पद व अधिकार बदलें",
+    role_citizen: "ग्रामीण नागरिक",
+    role_plumber: "प्लंबर (मरम्मत दल)",
+    role_sarpanch: "ग्राम सरपंच (प्रमुख)",
+    role_admin: "पंचायत प्रशासक (Admin)",
+    role_updated_success: "उपयोगकर्ता का पद सफलतापूर्वक अपडेट हुआ!"
   }
 };
 

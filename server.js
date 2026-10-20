@@ -650,6 +650,91 @@ app.put('/api/sarpanch/change-credentials', async (req, res) => {
   }
 });
 
+// ── Users & Role Access Management APIs (Sarpanch & Admin) ───────────
+
+// 1. Get all registered users with their live status
+app.get('/api/users', requireAuth(['Admin', 'Sarpanch']), async (req, res) => {
+  try {
+    const users = await User.find({}).sort({ createdAt: -1 }).lean();
+    const activeSessions = await ActiveSession.find({}).lean();
+    const activeEmailMap = new Set(activeSessions.map(s => (s.email || '').toLowerCase()));
+
+    const result = users.map(u => ({
+      id: u._id,
+      name: u.name || (u.email ? u.email.split('@')[0] : 'Citizen'),
+      email: u.email,
+      role: u.role || 'People/User',
+      createdAt: u.createdAt,
+      isOnline: activeEmailMap.has((u.email || '').toLowerCase())
+    }));
+
+    res.json({ success: true, users: result });
+  } catch (err) {
+    console.error("Fetch users error:", err);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// 2. Update a user's role and access level
+app.put('/api/users/:email/role', requireAuth(['Admin', 'Sarpanch']), async (req, res) => {
+  try {
+    const targetEmail = decodeURIComponent(req.params.email).toLowerCase().trim();
+    const { role } = req.body;
+
+    const validRoles = ['People/User', 'Plumber/Technician', 'Sarpanch', 'Admin'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({ error: `Invalid role. Allowed roles: ${validRoles.join(', ')}` });
+    }
+
+    const user = await User.findOne({ email: targetEmail });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const oldRole = user.role;
+    user.role = role;
+
+    // If role promoted to official and password is missing, set default password
+    if ((role === 'Admin' || role === 'Sarpanch') && (!user.password || user.password === 'citizen_auto_auth' || user.password === 'google_oauth_user')) {
+      user.password = role === 'Sarpanch' ? 'sarpanch123' : 'admin123';
+    }
+
+    await user.save();
+
+    // Update active session if user is currently online
+    await ActiveSession.updateMany(
+      { email: targetEmail },
+      { $set: { role: role } }
+    );
+
+    // Record role modification in village feed
+    const modifierName = req.session?.user?.name || req.session?.user?.email || 'Authority';
+    await Feed.create({
+      id: Date.now(),
+      name: modifierName,
+      time: new Date().toISOString(),
+      action: `Changed role of ${user.name || user.email} from "${oldRole}" to "${role}".`,
+      location: 'Administrative Desk',
+      ip: req.ip || '127.0.0.1',
+      phone: 'N/A'
+    });
+
+    res.json({
+      success: true,
+      message: `User role updated to ${role} successfully`,
+      user: {
+        id: user._id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      }
+    });
+  } catch (err) {
+    console.error("Update role error:", err);
+    res.status(500).json({ error: 'Failed to update user role' });
+  }
+});
+
 // ── Notifications APIs ──────────────────────────────────────────────
 
 // Fetch notifications for current user

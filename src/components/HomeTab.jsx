@@ -228,21 +228,29 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en', on
             </div>
           </div>
 
-          {/* Change ID/Password Button for Sarpanch */}
-          {isSarpanch && (
-            <div className="border-t border-amber-400/30 pt-3 mt-1">
+          {/* Action Buttons for Sarpanch & Admin */}
+          <div className="border-t border-amber-400/30 pt-3 mt-1 flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => setActiveTab('admin')}
+              className="px-3.5 py-2 bg-amber-500 text-white hover:bg-amber-600 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-xs active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-base">manage_accounts</span>
+              {t('user_roles')}
+            </button>
+
+            {isSarpanch && (
               <button
                 onClick={() => {
                   setNewEmail(currentUser.email || '');
                   setCredentialOpen(true);
                 }}
-                className="px-4 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-800 font-headline font-bold text-xs uppercase tracking-wider rounded-xl active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                className="px-3.5 py-2 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-800 font-headline font-bold text-xs uppercase tracking-wider rounded-xl active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
               >
-                <span className="material-symbols-outlined text-base">manage_accounts</span>
+                <span className="material-symbols-outlined text-base">key</span>
                 {t('change_credentials') || 'Change Login ID / Password'}
               </button>
-            </div>
-          )}
+            )}
+          </div>
         </section>
       )}
 

@@ -3,7 +3,7 @@ import { playEmergencySirenSound, stopEmergencySirenSound } from '../utils/siren
 import { getTranslation } from '../utils/translations';
 
 export default function AdminTab({ currentUser, language = 'en' }) {
-  const [adminSubTab, setAdminSubTab] = useState('map'); // 'map' | 'siren' | 'issues'
+  const [adminSubTab, setAdminSubTab] = useState('map'); // 'map' | 'siren' | 'issues' | 'users'
   const [liveData, setLiveData] = useState({
     metrics: { totalUsers: 0, liveNow: 1, activeReports: 0, resolvedReports: 0 },
     liveUsers: [],
@@ -19,6 +19,58 @@ export default function AdminTab({ currentUser, language = 'en' }) {
 
   // Issues search
   const [searchQuery, setSearchQuery] = useState('');
+
+  // User & Access Roles Management
+  const [usersList, setUsersList] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [userSearch, setUserSearch] = useState('');
+  const [userRoleFilter, setUserRoleFilter] = useState('all');
+  const [updatingUserEmail, setUpdatingUserEmail] = useState(null);
+
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const savedEmail = localStorage.getItem('gram_user_email') || currentUser?.email || '';
+      const res = await fetch('/api/users', {
+        headers: { 'x-user-email': encodeURIComponent(savedEmail) }
+      });
+      const data = await res.json();
+      if (data.success && Array.isArray(data.users)) {
+        setUsersList(data.users);
+      }
+    } catch (e) {
+      console.error("Fetch users error:", e);
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const handleUpdateRole = async (targetEmail, newRole) => {
+    setUpdatingUserEmail(targetEmail);
+    try {
+      const savedEmail = localStorage.getItem('gram_user_email') || currentUser?.email || '';
+      const res = await fetch(`/api/users/${encodeURIComponent(targetEmail)}/role`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-email': encodeURIComponent(savedEmail)
+        },
+        body: JSON.stringify({ role: newRole })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setUsersList(prev => prev.map(u => u.email === targetEmail ? { ...u, role: newRole } : u));
+        alert("✅ " + (t('role_updated_success') || "User role updated successfully!"));
+      } else {
+        alert(data.error || "Failed to update role");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Error updating role.");
+    } finally {
+      setUpdatingUserEmail(null);
+    }
+  };
 
   const mapContainerRef = useRef(null);
   const leafletMapRef = useRef(null);
@@ -112,9 +164,10 @@ export default function AdminTab({ currentUser, language = 'en' }) {
     }
   };
 
-  // 3. Initialize Leaflet Map reliably
+  // 3. Initialize Leaflet Map reliably & fetch users
   useEffect(() => {
     fetchLiveData();
+    fetchUsers();
     const interval = setInterval(fetchLiveData, 8000);
     return () => clearInterval(interval);
   }, []);
@@ -229,6 +282,13 @@ export default function AdminTab({ currentUser, language = 'en' }) {
     (i.location && i.location.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const filteredUsers = usersList.filter(u => {
+    const matchesSearch = (u.name && u.name.toLowerCase().includes(userSearch.toLowerCase())) ||
+      (u.email && u.email.toLowerCase().includes(userSearch.toLowerCase()));
+    const matchesRole = userRoleFilter === 'all' || u.role === userRoleFilter;
+    return matchesSearch && matchesRole;
+  });
+
   return (
     <div className="max-w-7xl mx-auto px-3 sm:px-6 py-4 animate-fadeIn pb-24 md:pb-8 flex flex-col gap-6">
       {/* Admin Header with 0ms Sub-tabs */}
@@ -283,6 +343,21 @@ export default function AdminTab({ currentUser, language = 'en' }) {
           >
             <span className="material-symbols-outlined text-[16px]">list_alt</span>
             {t('all_reports')} ({liveData.issues.length})
+          </button>
+
+          <button
+            onClick={() => {
+              setAdminSubTab('users');
+              fetchUsers();
+            }}
+            className={`px-3.5 py-2 rounded-xl text-xs font-headline font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all whitespace-nowrap cursor-pointer ${
+              adminSubTab === 'users'
+                ? 'bg-amber-500 text-white shadow-sm'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            <span className="material-symbols-outlined text-[16px]">manage_accounts</span>
+            {t('user_roles')} ({usersList.length || liveData.metrics.totalUsers})
           </button>
         </div>
       </div>
@@ -594,6 +669,242 @@ export default function AdminTab({ currentUser, language = 'en' }) {
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* 4. USER ROLES & ACCESS CONTROL VIEW */}
+      {adminSubTab === 'users' && (
+        <div className="flex flex-col gap-5 animate-fadeIn">
+          {/* Role Counts Header Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
+              <div className="flex items-center gap-1.5 text-primary">
+                <span className="material-symbols-outlined text-lg">group</span>
+                <span className="text-[10px] sm:text-[11px] font-headline font-bold uppercase tracking-wider text-on-surface-variant">
+                  {t('role_citizen')}
+                </span>
+              </div>
+              <span className="text-2xl sm:text-3xl font-headline font-extrabold text-primary mt-1">
+                {usersList.filter(u => u.role === 'People/User').length}
+              </span>
+              <span className="text-[10px] text-on-surface-variant mt-0.5">Report leaks & issues</span>
+            </div>
+
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
+              <div className="flex items-center gap-1.5 text-emerald-600">
+                <span className="material-symbols-outlined text-lg">plumbing</span>
+                <span className="text-[10px] sm:text-[11px] font-headline font-bold uppercase tracking-wider text-on-surface-variant">
+                  {t('role_plumber')}
+                </span>
+              </div>
+              <span className="text-2xl sm:text-3xl font-headline font-extrabold text-emerald-600 mt-1">
+                {usersList.filter(u => u.role === 'Plumber/Technician').length}
+              </span>
+              <span className="text-[10px] text-on-surface-variant mt-0.5">Task repair & photo proof</span>
+            </div>
+
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
+              <div className="flex items-center gap-1.5 text-amber-600">
+                <span className="material-symbols-outlined text-lg">verified_user</span>
+                <span className="text-[10px] sm:text-[11px] font-headline font-bold uppercase tracking-wider text-on-surface-variant">
+                  {t('role_sarpanch')}
+                </span>
+              </div>
+              <span className="text-2xl sm:text-3xl font-headline font-extrabold text-amber-600 mt-1">
+                {usersList.filter(u => u.role === 'Sarpanch').length}
+              </span>
+              <span className="text-[10px] text-on-surface-variant mt-0.5">Executive & Verification</span>
+            </div>
+
+            <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
+              <div className="flex items-center gap-1.5 text-indigo-600">
+                <span className="material-symbols-outlined text-lg">admin_panel_settings</span>
+                <span className="text-[10px] sm:text-[11px] font-headline font-bold uppercase tracking-wider text-on-surface-variant">
+                  {t('role_admin')}
+                </span>
+              </div>
+              <span className="text-2xl sm:text-3xl font-headline font-extrabold text-indigo-600 mt-1">
+                {usersList.filter(u => u.role === 'Admin').length}
+              </span>
+              <span className="text-[10px] text-on-surface-variant mt-0.5">Full System Command</span>
+            </div>
+          </div>
+
+          {/* Access Roles Permission Explanation Card */}
+          <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 p-4 sm:p-5 rounded-2xl flex flex-col gap-2.5">
+            <h4 className="font-headline font-bold text-xs sm:text-sm text-amber-900 flex items-center gap-2">
+              <span className="material-symbols-outlined text-amber-600 text-lg">security</span>
+              Role Access & Permission Levels
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs font-body text-on-surface-variant">
+              <div className="p-2.5 bg-white/80 rounded-xl border border-outline-variant/40">
+                <strong className="text-primary block font-headline text-[11px]">👤 Citizen (People/User)</strong>
+                <p className="text-[10px] mt-0.5">Report pipeline leaks with GPS, view village success feed, receive notices & sirens.</p>
+              </div>
+              <div className="p-2.5 bg-white/80 rounded-xl border border-outline-variant/40">
+                <strong className="text-emerald-700 block font-headline text-[11px]">🔧 Plumber / Field Crew</strong>
+                <p className="text-[10px] mt-0.5">Access "Tasks" tab to inspect complaints, upload "After" repair photos, and mark tasks Resolved.</p>
+              </div>
+              <div className="p-2.5 bg-white/80 rounded-xl border border-outline-variant/40">
+                <strong className="text-amber-700 block font-headline text-[11px]">👑 Gram Sarpanch</strong>
+                <p className="text-[10px] mt-0.5">Executive Desk on Home, broadcast urgent village notices, change Sarpanch ID/pass, verify tasks & assign roles.</p>
+              </div>
+              <div className="p-2.5 bg-white/80 rounded-xl border border-outline-variant/40">
+                <strong className="text-indigo-700 block font-headline text-[11px]">⚙️ Panchayat Admin</strong>
+                <p className="text-[10px] mt-0.5">Full Command Center with live GPS user map, police emergency sirens, database management & role control.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* User Directory & Role Assignment Controls */}
+          <div className="bg-white rounded-3xl border border-outline-variant/60 p-4 sm:p-6 shadow-sm flex flex-col gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+              <div>
+                <h3 className="font-headline font-bold text-base sm:text-lg text-primary flex items-center gap-2">
+                  <span className="material-symbols-outlined text-secondary text-xl">manage_accounts</span>
+                  {t('user_roles')}
+                </h3>
+                <p className="text-xs text-on-surface-variant font-body">
+                  Select any registered user and assign their access role. Changes apply instantly.
+                </p>
+              </div>
+
+              {/* Search & Role Filter Bar */}
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-56">
+                  <span className="material-symbols-outlined absolute left-2.5 top-2.5 text-on-surface-variant text-base">
+                    search
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Search name / email..."
+                    value={userSearch}
+                    onChange={(e) => setUserSearch(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 bg-surface-container-low border border-outline-variant rounded-xl text-xs font-body focus:outline-none focus:border-primary"
+                  />
+                </div>
+
+                <select
+                  value={userRoleFilter}
+                  onChange={(e) => setUserRoleFilter(e.target.value)}
+                  className="px-2.5 py-2 bg-surface-container-low border border-outline-variant rounded-xl text-xs font-headline font-bold text-on-surface focus:outline-none focus:border-primary cursor-pointer shrink-0"
+                >
+                  <option value="all">All Roles</option>
+                  <option value="People/User">Citizens</option>
+                  <option value="Plumber/Technician">Plumbers</option>
+                  <option value="Sarpanch">Sarpanch</option>
+                  <option value="Admin">Admins</option>
+                </select>
+
+                <button
+                  onClick={fetchUsers}
+                  disabled={usersLoading}
+                  className="p-2 bg-surface-container-low hover:bg-surface-container border border-outline-variant rounded-xl text-primary transition-colors cursor-pointer shrink-0"
+                  title="Refresh users"
+                >
+                  <span className={`material-symbols-outlined text-base ${usersLoading ? 'animate-spin' : ''}`}>
+                    refresh
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {usersLoading && usersList.length === 0 ? (
+              <div className="text-center py-8 text-on-surface-variant text-sm">
+                <span className="material-symbols-outlined animate-spin text-2xl text-primary">progress_activity</span>
+                <p className="mt-2">Loading registered users...</p>
+              </div>
+            ) : filteredUsers.length === 0 ? (
+              <div className="text-center py-8 text-on-surface-variant text-sm bg-surface-container-low rounded-2xl border border-outline-variant/60">
+                <span className="material-symbols-outlined text-3xl text-on-surface-variant/40 mb-1 block">search_off</span>
+                No users match your search criteria.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {filteredUsers.map((user) => {
+                  const isOnline = user.isOnline;
+                  const isUpdating = updatingUserEmail === user.email;
+
+                  return (
+                    <div
+                      key={user.id || user.email}
+                      className="p-3.5 rounded-2xl border border-outline-variant/60 bg-surface-container-lowest hover:bg-surface-container-low/40 transition-all flex flex-col justify-between gap-3 shadow-xs"
+                    >
+                      <div className="flex items-start justify-between gap-2.5">
+                        <div className="flex items-center gap-3 min-w-0">
+                          {/* Avatar with live pulse dot */}
+                          <div className="relative">
+                            <div className="w-10 h-10 rounded-full bg-primary-container text-white flex items-center justify-center font-bold text-sm uppercase shadow-sm">
+                              {(user.name || user.email)[0]}
+                            </div>
+                            <span
+                              className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white ${
+                                isOnline ? 'bg-green-500' : 'bg-gray-400'
+                              }`}
+                              title={isOnline ? 'Online Now' : 'Offline'}
+                            />
+                          </div>
+
+                          <div className="min-w-0">
+                            <h4 className="font-headline font-bold text-sm text-on-surface truncate">
+                              {user.name}
+                            </h4>
+                            <p className="text-xs text-on-surface-variant font-mono truncate">
+                              {user.email}
+                            </p>
+                            <span className="text-[10px] text-on-surface-variant/70 font-body">
+                              {isOnline ? '🟢 Live Active' : '⚪ Offline'} • Joined {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Active'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Current Role Badge */}
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-headline font-bold uppercase tracking-wider shrink-0 ${
+                          user.role === 'Admin'
+                            ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                            : user.role === 'Sarpanch'
+                            ? 'bg-amber-100 text-amber-800 border border-amber-300'
+                            : user.role === 'Plumber/Technician'
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                            : 'bg-primary/10 text-primary border border-primary/20'
+                        }`}>
+                          {user.role}
+                        </span>
+                      </div>
+
+                      {/* Interactive Role Assignment Controls */}
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-outline-variant/40">
+                        <span className="text-[11px] font-headline font-bold text-on-surface-variant flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[14px] text-secondary">tune</span>
+                          {t('assign_role')}:
+                        </span>
+
+                        <div className="flex items-center gap-2">
+                          <select
+                            disabled={isUpdating}
+                            value={user.role}
+                            onChange={(e) => handleUpdateRole(user.email, e.target.value)}
+                            className="px-2.5 py-1.5 bg-white border border-outline-variant rounded-xl text-xs font-headline font-bold text-on-surface focus:outline-none focus:border-primary shadow-xs cursor-pointer disabled:opacity-50"
+                          >
+                            <option value="People/User">👤 Citizen (Resident)</option>
+                            <option value="Plumber/Technician">🔧 Plumber / Technician</option>
+                            <option value="Sarpanch">👑 Gram Sarpanch</option>
+                            <option value="Admin">⚙️ Panchayat Admin</option>
+                          </select>
+
+                          {isUpdating && (
+                            <span className="material-symbols-outlined animate-spin text-sm text-primary">
+                              progress_activity
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       )}
