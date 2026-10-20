@@ -16,9 +16,7 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
 
   const isOfficialEmail = (val) => {
     const clean = (val || '').toLowerCase().trim();
-    return clean === 'admin@village.gov.in' || 
-           clean === 'sarpanch@village.gov.in' ||
-           clean.endsWith('@village.gov.in');
+    return clean === 'admin@village.gov.in' || clean === 'sarpanch@village.gov.in';
   };
 
   const getAccurateGps = async () => {
