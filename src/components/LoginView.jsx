@@ -132,9 +132,13 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
     const { lat, lon } = await getAccurateGps();
 
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
       const res = await fetch('/api/auth/manual', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({ 
           email: cleanEmail, 
           password: loginMode === 'official' ? password : '',
@@ -142,25 +146,32 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
           lon 
         })
       });
+      clearTimeout(timeoutId);
 
       const data = await res.json();
       if (res.ok && data.user) {
-        localStorage.setItem('gram_user_email', data.user.email);
-        localStorage.setItem('gram_user_role', data.user.role);
-        if (data.token) {
-          localStorage.setItem('gram_auth_token', data.token);
-        }
+        try {
+          localStorage.setItem('gram_user_email', data.user.email);
+          localStorage.setItem('gram_user_role', data.user.role);
+          if (data.token) {
+            localStorage.setItem('gram_auth_token', data.token);
+          }
+        } catch (_) {}
         onLoginSuccess(data.user);
       } else if (data.isOfficial) {
         // Server recognized official account, prompt to official tab
         setLoginMode('official');
-        alert("This is an official account. Please enter your password.");
+        alert("Official account detected. Please enter your official staff password.");
       } else {
         alert(data.message || data.error || 'Login failed.');
       }
     } catch (err) {
       console.error(err);
-      alert('Network or server connection error. Please try again.');
+      if (err.name === 'AbortError') {
+        alert('Server connection timed out. Please tap Enter again.');
+      } else {
+        alert('Network or server connection error. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
