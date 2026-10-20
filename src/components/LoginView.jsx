@@ -487,11 +487,19 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
           </form>
         )}
 
-        {/* Footer Note */}
+        {/* Official Security Advisory & Cyber Policy */}
         <div className="mt-5 pt-3.5 border-t border-outline-variant/40 text-center">
-          <p className="text-[10px] text-on-surface-variant font-body">
-            Official Admin default: <code className="text-primary font-mono font-bold">admin@village.gov.in</code> (pass: <code className="font-mono">admin123</code>)<br/>
-            Sarpanch default: <code className="text-primary font-mono font-bold">sarpanch@village.gov.in</code> (pass: <code className="font-mono">sarpanch123</code>)
+          <div className="bg-surface-container/70 p-3 rounded-2xl border border-outline-variant/40 text-left">
+            <div className="flex items-center gap-1.5 mb-1 text-primary">
+              <span className="material-symbols-outlined text-[16px]">verified</span>
+              <span className="text-[11px] font-headline font-bold">Mahurzari Cyber Security Advisory:</span>
+            </div>
+            <p className="text-[11px] text-on-surface font-body leading-relaxed italic">
+              "😂 Arre bhai! Hack karna itna easy nahi hai! 🛑✋ Padhaai-likhaai me thoda dhyan do, IAS-YAS bano aur desh ko sambhalo ji! 📚🇮🇳 Yaha Gram Panchayat Mahurzari ka clean water portal hack karke kya milega? Yaha se sirf pipeline ka paani hi milega, data nahi! 🚰 Jal hi jeevan hai — jaao paani piyo aur mast raho! 💧🙏"
+            </p>
+          </div>
+          <p className="text-[9px] text-on-surface-variant font-mono mt-2 uppercase tracking-wider">
+            Gram Panchayat Mahurzari • 24/7 Monitored Clean Water System
           </p>
         </div>
       </div>
