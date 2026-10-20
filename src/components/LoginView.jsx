@@ -218,7 +218,7 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
         <div className="flex bg-surface-container-low p-1 rounded-2xl border border-outline-variant/50 mb-5">
           <button
             type="button"
-            onClick={() => { setLoginMode('citizen'); setRoastNotice(null); }}
+            onClick={() => setLoginMode('citizen')}
             className={`flex-1 py-2 px-3 rounded-xl font-headline font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               loginMode === 'citizen'
                 ? 'bg-primary text-white shadow-sm'
@@ -230,7 +230,7 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
           </button>
           <button
             type="button"
-            onClick={() => { setLoginMode('official'); setRoastNotice(null); }}
+            onClick={() => setLoginMode('official')}
             className={`flex-1 py-2 px-3 rounded-xl font-headline font-bold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
               loginMode === 'official'
                 ? 'bg-primary text-white shadow-sm'
