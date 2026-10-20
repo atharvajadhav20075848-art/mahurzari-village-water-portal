@@ -21,28 +21,37 @@ export default function App() {
     localStorage.setItem('gram_lang', newLang);
   };
 
-  // 1. Initial Path Detection & Auth Check
+  // 1. Initial Path Detection & Auth Check with Mobile-Safe Timeout
   useEffect(() => {
-    const path = window.location.pathname.replace(/^\//, '').toLowerCase();
-    if (['home', 'report', 'tasks', 'admin', 'support'].includes(path)) {
-      setActiveTab(path);
-    }
+    try {
+      const path = window.location.pathname.replace(/^\//, '').toLowerCase();
+      if (['home', 'report', 'tasks', 'admin', 'support'].includes(path)) {
+        setActiveTab(path);
+      }
+    } catch (_) {}
 
     const checkSession = async () => {
-      try {
-        const res = await fetch('/api/auth/status');
-        const data = await res.json();
-        if (data.loggedIn && data.user) {
-          setCurrentUser(data.user);
-        } else {
-          localStorage.removeItem('gram_auth_token');
-          setCurrentUser(null);
+      // 2.5s hard timeout so mobile network stalls never leave a blank screen
+      const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2500));
+      const fetchPromise = (async () => {
+        try {
+          const res = await fetch('/api/auth/status');
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.loggedIn && data.user) {
+              setCurrentUser(data.user);
+            } else {
+              try { localStorage.removeItem('gram_auth_token'); } catch (_) {}
+              setCurrentUser(null);
+            }
+          }
+        } catch (e) {
+          console.warn("Auth check note:", e);
         }
-      } catch (e) {
-        console.warn("Auth check error:", e);
-      } finally {
-        setAuthChecked(true);
-      }
+      })();
+
+      await Promise.race([fetchPromise, timeoutPromise]);
+      setAuthChecked(true);
     };
 
     checkSession();
