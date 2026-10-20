@@ -3,7 +3,7 @@
   "appName": "Gram Jal Portal",
   "webDir": "public",
   "server": {
-    "url": "https://villagewatermanagementportal.vercel.app/app",
+    "url": "https://mahurzari-village-water-portal.vercel.app",
     "cleartext": true,
     "androidScheme": "https"
   },

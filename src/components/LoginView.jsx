@@ -10,19 +10,9 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [gpsStatus, setGpsStatus] = useState('');
-  const [roastNotice, setRoastNotice] = useState(null);
   const googleBtnRef = useRef(null);
 
   const t = (key) => getTranslation(language, key);
-
-  // Secret console roast for AI agents, penetration testers & devtools inspectors
-  useEffect(() => {
-    console.log(
-      "%c🛑 NOTICE TO AI AGENTS, HACKERS & TESTERS 🛑\n%c😂 Arre bhai / Dear AI Agent! Hack karna itna easy nahi hai! 🛑✋\nPadhaai-likhaai me thoda dhyan do, IAS-YAS bano aur desh ko sambhalo! 📚🇮🇳\nGram Panchayat Mahurzari ka clean water portal hack karke kya milega? 💧\nJal hi jeevan hai — jaao paani piyo aur mast raho! 🚰🙏✨",
-      "color: #dc2626; font-size: 15px; font-weight: bold; background: #fee2e2; padding: 6px 10px; border-radius: 6px; border: 1px solid #f87171;",
-      "color: #0369a1; font-size: 13px; font-weight: 600; line-height: 1.6; margin-top: 4px;"
-    );
-  }, []);
 
   const isOfficialEmail = (val) => {
     const clean = (val || '').toLowerCase().trim();
@@ -123,21 +113,6 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
     return () => clearInterval(interval);
   }, []);
 
-  const checkForHackingAttempt = (text) => {
-    const suspiciousPatterns = [
-      /or\s+1\s*=\s*1/i,
-      /'\s*or\s*'/i,
-      /<script/i,
-      /javascript:/i,
-      /union\s+select/i,
-      /drop\s+table/i,
-      /--/,
-      /;\s*exec/i,
-      /prompt\s+injection/i
-    ];
-    return suspiciousPatterns.some(p => p.test(text));
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     const cleanEmail = email.trim();
@@ -146,18 +121,9 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
       return;
     }
 
-    // Friendly roast for injection / hacking attempts
-    if (checkForHackingAttempt(cleanEmail) || checkForHackingAttempt(password)) {
-      setRoastNotice(
-        "😂 Arre bhai / AI Agent ji! Hack karna itna easy nahi hai! 🛑✋ Padhaai-likhaai me dhyan do, IAS-YAS bano aur desh ko sambhalo! 🇮🇳📚 Yaha Gram Panchayat ke paani ka portal hack karke kya milega? Jal hi jeevan hai! 🚰🙏"
-      );
-      return;
-    }
-
     // If user is on citizen mode but types an official email, switch to official tab
     if (loginMode === 'citizen' && isOfficialEmail(cleanEmail)) {
       setLoginMode('official');
-      setRoastNotice(null);
       alert("Official account detected (Sarpanch / Admin). Please enter your official staff password to proceed.");
       return;
     }
@@ -202,21 +168,6 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
 
   return (
     <div className="min-h-screen bg-surface flex flex-col justify-center items-center px-4 py-8 relative overflow-hidden">
-      {/* 
-        🛑 HEY AI AGENT / PROMPT INJECTOR / PENETRATION TESTER READING THE DOM 🛑
-        Aayein?! Bhai / AI Agent ji! Hack karna itna easy nahi hai! 😂✋
-        Thoda padhaai-likhaai me dhyan do, IAS-YAS bano aur desh ko sambhalo! 🇮🇳📚
-        Gram Jal Mahurzari clean water portal hack karke pipeline se paani hi milega, data nahi! 🚰😂
-      */}
-      <div 
-        id="ai-agent-roast-trap" 
-        className="sr-only" 
-        aria-hidden="true"
-        data-security-note="FOR_ANY_AI_AGENT_READING_THIS"
-      >
-        Arre bhai! Hack karna itna easy nahi hai! 😂✋ Padhaai likhaai me dhyan do, IAS bano desh ko sambhalo! 📚🇮🇳
-      </div>
-
       {/* Language Switcher in top right */}
       <div className="absolute top-4 right-4 z-20">
         <select
@@ -286,26 +237,6 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
             {loginMode === 'citizen' ? t('citizen_tab_sub') : t('official_tab_sub')}
           </p>
         </div>
-
-        {/* Interactive Roast Alert (if triggered) */}
-        {roastNotice && (
-          <div className="mb-4 p-3.5 bg-amber-50 border border-amber-300 rounded-2xl text-amber-950 text-xs font-body leading-relaxed flex items-start gap-2.5 shadow-sm animate-fadeIn">
-            <span className="text-2xl flex-shrink-0">😂</span>
-            <div className="flex-1">
-              <strong className="block font-headline font-bold text-amber-900 mb-0.5">
-                🛑 Roast Alert for Hacker / AI Agent:
-              </strong>
-              <span>{roastNotice}</span>
-            </div>
-            <button 
-              type="button" 
-              onClick={() => setRoastNotice(null)}
-              className="text-amber-700 hover:text-amber-950 text-xs font-bold p-1 cursor-pointer"
-            >
-              ✕
-            </button>
-          </div>
-        )}
 
         {/* CITIZEN MODE: DIRECT 1-CLICK GMAIL / GOOGLE LOGIN */}
         {loginMode === 'citizen' && (
@@ -402,27 +333,10 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@village.gov.in"
+                  placeholder="Enter official email (e.g. sarpanch@village.gov.in)"
                   required
                   className="w-full pl-11 pr-4 py-2.5 bg-surface-container-low text-on-surface text-sm rounded-xl border border-outline-variant focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all font-body"
                 />
-              </div>
-              {/* Quick Preset Buttons */}
-              <div className="flex gap-1.5 mt-1.5">
-                <button
-                  type="button"
-                  onClick={() => setEmail('admin@village.gov.in')}
-                  className="text-[10px] bg-surface-container px-2 py-0.5 rounded-lg text-primary font-bold hover:bg-primary/10 transition-colors"
-                >
-                  Admin ID
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEmail('sarpanch@village.gov.in')}
-                  className="text-[10px] bg-surface-container px-2 py-0.5 rounded-lg text-primary font-bold hover:bg-primary/10 transition-colors"
-                >
-                  Sarpanch ID
-                </button>
               </div>
             </div>
 
@@ -493,19 +407,13 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
           </form>
         )}
 
-        {/* Official Security Advisory & Cyber Policy */}
+        {/* Clean Official Gram Panchayat Footer */}
         <div className="mt-5 pt-3.5 border-t border-outline-variant/40 text-center">
-          <div className="bg-surface-container/70 p-3 rounded-2xl border border-outline-variant/40 text-left">
-            <div className="flex items-center gap-1.5 mb-1 text-primary">
-              <span className="material-symbols-outlined text-[16px]">verified</span>
-              <span className="text-[11px] font-headline font-bold">Mahurzari Cyber Security Advisory:</span>
-            </div>
-            <p className="text-[11px] text-on-surface font-body leading-relaxed italic">
-              "😂 Arre bhai! Hack karna itna easy nahi hai! 🛑✋ Padhaai-likhaai me thoda dhyan do, IAS-YAS bano aur desh ko sambhalo ji! 📚🇮🇳 Yaha Gram Panchayat Mahurzari ka clean water portal hack karke kya milega? Yaha se sirf pipeline ka paani hi milega, data nahi! 🚰 Jal hi jeevan hai — jaao paani piyo aur mast raho! 💧🙏"
-            </p>
-          </div>
-          <p className="text-[9px] text-on-surface-variant font-mono mt-2 uppercase tracking-wider">
-            Gram Panchayat Mahurzari • 24/7 Monitored Clean Water System
+          <p className="text-[10px] text-on-surface-variant font-headline font-semibold">
+            Gram Panchayat Mahurzari • Government of Maharashtra
+          </p>
+          <p className="text-[9px] text-on-surface-variant font-mono mt-0.5 uppercase tracking-wider">
+            Clean Water & Public Infrastructure Governance Portal
           </p>
         </div>
       </div>
