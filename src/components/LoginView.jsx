@@ -20,15 +20,14 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
   };
 
   const getAccurateGps = async () => {
-    setGpsStatus('Acquiring high-accuracy GPS (±5m)...');
     let lat = null, lon = null;
     try {
       if (navigator.geolocation) {
         const pos = await new Promise((res, rej) => {
           navigator.geolocation.getCurrentPosition(res, rej, {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 0
+            enableHighAccuracy: false,
+            timeout: 2000,
+            maximumAge: 60000
           });
         });
         lat = pos.coords.latitude;
@@ -48,26 +47,36 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
       if (response && response.credential) {
         setLoading(true);
         const { lat, lon } = await getAccurateGps();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
         try {
           const res = await fetch('/api/auth/google', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
             body: JSON.stringify({ token: response.credential, lat, lon })
           });
+          clearTimeout(timeoutId);
           const data = await res.json();
           if (res.ok && data.user) {
-            localStorage.setItem('gram_user_email', data.user.email);
-            localStorage.setItem('gram_user_role', data.user.role);
-            if (data.token) {
-              localStorage.setItem('gram_auth_token', data.token);
-            }
+            try {
+              localStorage.setItem('gram_user_email', data.user.email);
+              localStorage.setItem('gram_user_role', data.user.role);
+              if (data.token) {
+                localStorage.setItem('gram_auth_token', data.token);
+              }
+            } catch (_) {}
             onLoginSuccess(data.user);
           } else {
             alert(data.message || data.error || 'Google login failed.');
           }
         } catch (err) {
           console.error(err);
-          alert('Error connecting with Google Sign-In.');
+          if (err.name === 'AbortError') {
+            alert('Google Sign-in connection timed out. Please try again.');
+          } else {
+            alert('Error connecting with Google Sign-In.');
+          }
         } finally {
           setLoading(false);
         }
