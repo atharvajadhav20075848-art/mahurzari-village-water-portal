@@ -47,47 +47,44 @@ export default function ApkBanner() {
   if (dismissed) return null;
 
   return (
-    <div className="max-w-7xl mx-auto px-3 sm:px-6 pt-3 pb-1">
-      <div className="bg-gradient-to-r from-secondary to-[#004d3e] text-on-secondary p-3.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-md border border-secondary-container/20">
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-2xl text-secondary-fixed">install_mobile</span>
+    <div className="max-w-7xl mx-auto px-2 sm:px-6 pt-2 pb-0.5">
+      <div className="bg-gradient-to-r from-secondary to-[#004d3e] text-on-secondary px-3 py-2 sm:p-3 rounded-xl sm:rounded-2xl flex items-center justify-between gap-2 shadow-sm border border-secondary-container/20">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-white/15 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-lg sm:text-xl text-secondary-fixed">install_mobile</span>
           </div>
-          <div>
-            <h4 className="font-headline font-bold text-sm text-white leading-tight">
-              Gram Jal Android App Available
+          <div className="min-w-0">
+            <h4 className="font-headline font-bold text-xs sm:text-sm text-white leading-tight truncate">
+              Gram Jal App (Android)
             </h4>
-            <p className="text-xs text-secondary-fixed/90 leading-tight">
-              Fast, offline alerts & high-accuracy leak reporting for your phone
+            <p className="text-[10px] sm:text-xs text-secondary-fixed/90 leading-tight hidden xs:block truncate">
+              Fast, offline alerts & leak reporting
             </p>
           </div>
         </div>
 
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          {/* Direct APK Download Button */}
+        <div className="flex items-center gap-1.5 shrink-0">
           <a
             href="/api/download/apk"
             download="Gram-Jal-Mahurzari.apk"
-            className="flex-1 sm:flex-initial px-3.5 py-2 bg-white text-secondary hover:bg-surface-container-low font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5"
+            className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-white text-secondary hover:bg-surface-container-low font-headline font-bold text-[10px] sm:text-xs uppercase tracking-wider rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1"
           >
-            <span className="material-symbols-outlined text-base">android</span>
-            Direct APK
+            <span className="material-symbols-outlined text-[14px]">android</span>
+            <span>APK</span>
           </a>
 
-          {/* PWA Button */}
           <button
             onClick={triggerPwaInstall}
-            className="flex-1 sm:flex-initial px-3.5 py-2 bg-secondary-fixed text-on-secondary-fixed hover:brightness-105 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5"
+            className="px-2.5 py-1 sm:px-3 sm:py-1.5 bg-secondary-fixed text-on-secondary-fixed font-headline font-bold text-[10px] sm:text-xs uppercase tracking-wider rounded-lg shadow-sm active:scale-95 transition-all flex items-center gap-1"
           >
-            <span className="material-symbols-outlined text-base">download</span>
-            PWA
+            <span className="material-symbols-outlined text-[14px]">download</span>
+            <span>PWA</span>
           </button>
 
-          {/* Dismiss Button */}
           <button
             onClick={handleDismiss}
-            className="p-1.5 text-white/70 hover:text-white rounded-lg transition-colors cursor-pointer"
-            title="Dismiss banner for 24h"
+            className="p-1 text-white/70 hover:text-white rounded-lg transition-colors cursor-pointer"
+            title="Dismiss for 24 hours"
           >
             <span className="material-symbols-outlined text-base">close</span>
           </button>

@@ -135,29 +135,36 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en', on
   const pendingCount = issues.filter(i => i.status !== 'Resolved').length;
 
   return (
-    <div className="flex flex-col gap-6 max-w-7xl mx-auto px-3 sm:px-6 py-4 animate-fadeIn pb-20 md:pb-8">
+    <div className="flex flex-col gap-4 sm:gap-6 max-w-7xl mx-auto px-2.5 sm:px-6 py-2.5 sm:py-4 animate-fadeIn pb-24 md:pb-8">
       {/* Hero Village Banner */}
-      <section className="bg-gradient-to-r from-primary to-[#0a4b73] text-white p-6 sm:p-8 rounded-3xl shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4 relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="bg-secondary-fixed text-on-secondary-fixed text-[10px] font-headline font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full">
+      <section className="bg-gradient-to-br from-primary via-[#003b5a] to-[#0a4b73] text-white p-4 sm:p-7 rounded-2xl sm:rounded-3xl shadow-sm relative overflow-hidden">
+        {/* Subtle decorative watermark icon */}
+        <span className="material-symbols-outlined text-[130px] sm:text-[160px] text-white/5 absolute -right-6 -bottom-6 select-none pointer-events-none">
+          water_drop
+        </span>
+
+        <div className="relative z-10 flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="bg-secondary-fixed text-on-secondary-fixed text-[9px] sm:text-[10px] font-headline font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full">
               Mahurzari Gram Panchayat
             </span>
-            <span className="text-xs text-primary-fixed flex items-center gap-1 font-medium">
-              <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+            <span className="text-[11px] sm:text-xs text-primary-fixed flex items-center gap-1 font-medium">
+              <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
               Live System Active
             </span>
           </div>
-          <h2 className="font-headline font-bold text-2xl sm:text-3xl tracking-tight mb-1">
+
+          <h2 className="font-headline font-bold text-xl sm:text-3xl tracking-tight leading-tight mt-0.5">
             {t('village_success')}
           </h2>
-          <p className="text-primary-fixed text-sm sm:text-base font-body max-w-md">
+          <p className="text-primary-fixed text-xs sm:text-sm font-body max-w-md leading-relaxed">
             {t('together_conserve')}
           </p>
-          <div className="flex items-center gap-3 mt-4">
+
+          <div className="flex flex-wrap items-center gap-2 mt-1 sm:mt-2">
             <button
               onClick={() => setActiveTab('report')}
-              className="px-4 py-2.5 bg-secondary text-white hover:bg-secondary/90 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+              className="px-4 py-2 sm:px-5 sm:py-2.5 bg-secondary text-white hover:bg-secondary/90 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
             >
               <span className="material-symbols-outlined text-base">add_location_alt</span>
               {t('report_leak')}
@@ -165,19 +172,13 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en', on
             {isStaff && (
               <button
                 onClick={() => setBroadcastOpen(true)}
-                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-headline font-bold text-xs uppercase tracking-wider rounded-xl border border-white/20 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+                className="px-3.5 py-2 sm:px-4 sm:py-2.5 bg-white/10 hover:bg-white/20 text-white font-headline font-bold text-xs uppercase tracking-wider rounded-xl border border-white/20 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <span className="material-symbols-outlined text-base">campaign</span>
                 {t('broadcast_notice')}
               </button>
             )}
           </div>
-        </div>
-
-        <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/20 shadow-inner">
-          <span className="material-symbols-outlined text-5xl sm:text-6xl text-secondary-fixed">
-            water_drop
-          </span>
         </div>
       </section>
 
@@ -426,88 +427,82 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en', on
       )}
 
       {/* ONLY Real Live Metrics Cards */}
-      <div className="grid grid-cols-2 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-secondary text-2xl">verified</span>
-            <span className="text-xs font-headline font-bold text-on-surface-variant uppercase tracking-wider">
+      <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="material-symbols-outlined text-secondary text-xl sm:text-2xl">verified</span>
+            <span className="text-[10px] sm:text-xs font-headline font-bold text-on-surface-variant uppercase tracking-wider">
               {t('resolved_leaks')}
             </span>
           </div>
-          <span className="text-3xl sm:text-4xl font-headline font-extrabold text-secondary mt-2">
+          <span className="text-2xl sm:text-4xl font-headline font-extrabold text-secondary mt-1 sm:mt-2">
             {resolvedIssues.length}
           </span>
-          <span className="text-xs text-on-surface-variant mt-1 font-body">
+          <span className="text-[10px] sm:text-xs text-on-surface-variant mt-0.5 sm:mt-1 font-body">
             {t('community_repaired')}
           </span>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-error text-2xl">construction</span>
-            <span className="text-xs font-headline font-bold text-on-surface-variant uppercase tracking-wider">
+        <div className="bg-white p-3.5 sm:p-5 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <span className="material-symbols-outlined text-error text-xl sm:text-2xl">construction</span>
+            <span className="text-[10px] sm:text-xs font-headline font-bold text-on-surface-variant uppercase tracking-wider">
               {t('active_issues')}
             </span>
           </div>
-          <span className="text-3xl sm:text-4xl font-headline font-extrabold text-error mt-2">
+          <span className="text-2xl sm:text-4xl font-headline font-extrabold text-error mt-1 sm:mt-2">
             {pendingCount}
           </span>
-          <span className="text-xs text-on-surface-variant mt-1 font-body">
+          <span className="text-[10px] sm:text-xs text-on-surface-variant mt-0.5 sm:mt-1 font-body">
             {t('under_maintenance')}
           </span>
         </div>
       </div>
 
-      {/* Rolling Queue Info Banner (5th report rolls off 1st) */}
-      <div className="p-3 bg-surface-container rounded-2xl border border-outline-variant flex items-center gap-2.5 text-xs text-on-surface-variant font-body">
-        <span className="material-symbols-outlined text-primary text-lg shrink-0">speed</span>
-        <span>{t('rolling_queue_info')}</span>
-      </div>
-
       {/* How It Works Section */}
-      <section className="bg-white p-6 rounded-3xl border border-outline-variant/60 shadow-sm">
-        <h3 className="font-headline font-bold text-lg text-primary mb-4 flex items-center gap-2">
-          <span className="material-symbols-outlined text-xl text-secondary">help_outline</span>
+      <section className="bg-white p-4 sm:p-6 rounded-2xl sm:rounded-3xl border border-outline-variant/60 shadow-sm">
+        <h3 className="font-headline font-bold text-base sm:text-lg text-primary mb-3 sm:mb-4 flex items-center gap-2">
+          <span className="material-symbols-outlined text-lg sm:text-xl text-secondary">help_outline</span>
           {t('how_it_works')}
         </h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="flex items-start gap-3 p-4 bg-surface-container-low rounded-2xl">
-            <div className="w-10 h-10 rounded-xl bg-secondary text-white flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5 sm:gap-4">
+          <div className="flex items-start gap-2.5 p-3 sm:p-4 bg-surface-container-low rounded-xl sm:rounded-2xl">
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-secondary text-white flex items-center justify-center font-bold text-xs sm:text-sm shrink-0 shadow-sm">
               1
             </div>
             <div>
-              <h4 className="font-headline font-bold text-xs uppercase tracking-wider text-primary">
+              <h4 className="font-headline font-bold text-[11px] sm:text-xs uppercase tracking-wider text-primary">
                 {t('step1_title')}
               </h4>
-              <p className="text-xs text-on-surface-variant mt-1 font-body leading-relaxed">
+              <p className="text-[11px] sm:text-xs text-on-surface-variant mt-0.5 sm:mt-1 font-body leading-relaxed">
                 {t('step1_desc')}
               </p>
             </div>
           </div>
 
-          <div className="flex items-start gap-3 p-4 bg-surface-container-low rounded-2xl">
-            <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
+          <div className="flex items-start gap-2.5 p-3 sm:p-4 bg-surface-container-low rounded-xl sm:rounded-2xl">
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-primary text-white flex items-center justify-center font-bold text-xs sm:text-sm shrink-0 shadow-sm">
               2
             </div>
             <div>
-              <h4 className="font-headline font-bold text-xs uppercase tracking-wider text-primary">
+              <h4 className="font-headline font-bold text-[11px] sm:text-xs uppercase tracking-wider text-primary">
                 {t('step2_title')}
               </h4>
-              <p className="text-xs text-on-surface-variant mt-1 font-body leading-relaxed">
+              <p className="text-[11px] sm:text-xs text-on-surface-variant mt-0.5 sm:mt-1 font-body leading-relaxed">
                 {t('step2_desc')}
               </p>
             </div>
           </div>
 
-          <div className="flex items-start gap-3 p-4 bg-surface-container-low rounded-2xl">
-            <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-base shrink-0 shadow-sm">
+          <div className="flex items-start gap-2.5 p-3 sm:p-4 bg-surface-container-low rounded-xl sm:rounded-2xl">
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg bg-emerald-600 text-white flex items-center justify-center font-bold text-xs sm:text-sm shrink-0 shadow-sm">
               3
             </div>
             <div>
-              <h4 className="font-headline font-bold text-xs uppercase tracking-wider text-primary">
+              <h4 className="font-headline font-bold text-[11px] sm:text-xs uppercase tracking-wider text-primary">
                 {t('step3_title')}
               </h4>
-              <p className="text-xs text-on-surface-variant mt-1 font-body leading-relaxed">
+              <p className="text-[11px] sm:text-xs text-on-surface-variant mt-0.5 sm:mt-1 font-body leading-relaxed">
                 {t('step3_desc')}
               </p>
             </div>

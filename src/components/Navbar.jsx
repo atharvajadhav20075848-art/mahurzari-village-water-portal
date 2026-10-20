@@ -116,21 +116,17 @@ export default function Navbar({
           </nav>
         </div>
 
-        {/* Right Section: Mobile Title, Language, User Profile & Logout */}
-        <div className="flex items-center gap-2 shrink-0">
-          <span className="md:hidden font-headline font-bold text-sm text-primary px-2 py-0.5 bg-primary/10 rounded-md">
-            {getTabTitle(activeTab)}
-          </span>
-
+        {/* Right Section: Language, User Profile & Logout */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Language Switcher */}
           <select 
             value={language}
             onChange={(e) => setLanguage(e.target.value)}
-            className="bg-surface-container-low text-on-surface font-headline font-semibold text-xs rounded-lg border border-outline-variant px-2 py-1.5 focus:outline-none focus:border-primary cursor-pointer transition-colors"
+            className="bg-surface-container-low text-on-surface font-headline font-semibold text-[11px] sm:text-xs rounded-lg border border-outline-variant/60 px-1.5 sm:px-2 py-1 sm:py-1.5 focus:outline-none focus:border-primary cursor-pointer transition-colors"
           >
-            <option value="en">English</option>
-            <option value="mr">मराठी</option>
-            <option value="hi">हिंदी</option>
+            <option value="en">EN</option>
+            <option value="mr">MR</option>
+            <option value="hi">HI</option>
           </select>
 
           {/* User Badge */}
