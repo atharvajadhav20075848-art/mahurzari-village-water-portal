@@ -12,6 +12,7 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en', on
   // Sarpanch credential change state
   const [credentialOpen, setCredentialOpen] = useState(false);
   const [newEmail, setNewEmail] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPass, setShowNewPass] = useState(false);
@@ -91,15 +92,14 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en', on
     setCredentialSaving(true);
     try {
       const targetEmail = currentUser.email;
-      const savedEmail = localStorage.getItem('gram_user_email') || currentUser.email;
 
       const res = await fetch(`/api/sarpanch/change-credentials`, {
         method: 'PUT',
         headers: { 
-          'Content-Type': 'application/json',
-          'x-user-email': encodeURIComponent(savedEmail)
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          currentPassword: currentPassword,
           currentEmail: targetEmail,
           newEmail: newEmail.trim() || targetEmail,
           newPassword: newPassword
@@ -110,9 +110,13 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en', on
       if (res.ok && data.success) {
         alert("✅ " + (t('credentials_updated') || "Credentials updated successfully! Please re-login with new credentials."));
         setCredentialOpen(false);
+        setCurrentPassword('');
         setNewEmail('');
         setNewPassword('');
         setConfirmPassword('');
+        if (data.token) {
+          localStorage.setItem('gram_auth_token', data.token);
+        }
         // If email changed, update localStorage and state
         const updatedEmail = newEmail.trim() ? newEmail.trim().toLowerCase() : targetEmail;
         localStorage.setItem('gram_user_email', updatedEmail);
@@ -353,6 +357,24 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en', on
                 <p className="text-[10px] text-on-surface-variant mt-1">
                   {t('leave_blank_email') || 'Leave as-is if you only want to change password'}
                 </p>
+              </div>
+
+              {/* Current Password */}
+              <div>
+                <label className="text-xs font-headline font-bold uppercase text-on-surface mb-1 block">
+                  {t('current_password') || 'Current Password'}
+                </label>
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-3 text-on-surface-variant text-lg pointer-events-none">key</span>
+                  <input
+                    type={showNewPass ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="Enter current password"
+                    required
+                    className="w-full pl-10 pr-10 py-2.5 bg-surface-container-low rounded-xl border border-outline-variant text-sm font-body focus:outline-none focus:border-primary"
+                  />
+                </div>
               </div>
 
               {/* New Password */}

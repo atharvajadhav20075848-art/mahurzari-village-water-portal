@@ -29,28 +29,17 @@ export default function App() {
     }
 
     const checkSession = async () => {
-      const savedEmail = localStorage.getItem('gram_user_email');
       try {
-        const res = await fetch('/api/auth/status', {
-          headers: savedEmail ? { 'x-user-email': encodeURIComponent(savedEmail) } : {}
-        });
+        const res = await fetch('/api/auth/status');
         const data = await res.json();
         if (data.loggedIn && data.user) {
           setCurrentUser(data.user);
-        } else if (savedEmail) {
-          const role = localStorage.getItem('gram_user_role') || 'People/User';
-          const name = savedEmail.includes('@') ? savedEmail.split('@')[0] : 'Citizen';
-          setCurrentUser({ email: savedEmail, role, name });
+        } else {
+          localStorage.removeItem('gram_auth_token');
+          setCurrentUser(null);
         }
       } catch (e) {
         console.warn("Auth check error:", e);
-        if (savedEmail) {
-          setCurrentUser({
-            email: savedEmail,
-            role: localStorage.getItem('gram_user_role') || 'People/User',
-            name: savedEmail.split('@')[0]
-          });
-        }
       } finally {
         setAuthChecked(true);
       }
@@ -127,6 +116,7 @@ export default function App() {
     const emailToLogout = currentUser?.email || localStorage.getItem('gram_user_email');
     localStorage.removeItem('gram_user_email');
     localStorage.removeItem('gram_user_role');
+    localStorage.removeItem('gram_auth_token');
     setCurrentUser(null);
     window.history.pushState(null, '', '/login');
     try {

@@ -70,6 +70,9 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
           if (res.ok && data.user) {
             localStorage.setItem('gram_user_email', data.user.email);
             localStorage.setItem('gram_user_role', data.user.role);
+            if (data.token) {
+              localStorage.setItem('gram_auth_token', data.token);
+            }
             onLoginSuccess(data.user);
           } else {
             alert(data.message || data.error || 'Google login failed.');
@@ -178,6 +181,9 @@ export default function LoginView({ onLoginSuccess, language = 'en', setLanguage
       if (res.ok && data.user) {
         localStorage.setItem('gram_user_email', data.user.email);
         localStorage.setItem('gram_user_role', data.user.role);
+        if (data.token) {
+          localStorage.setItem('gram_auth_token', data.token);
+        }
         onLoginSuccess(data.user);
       } else if (data.isOfficial) {
         // Server recognized official account, prompt to official tab

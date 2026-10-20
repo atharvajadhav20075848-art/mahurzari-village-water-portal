@@ -5,6 +5,8 @@ const path = require('path');
 const session = require('express-session');
 const multer = require('multer');
 const http = require('http');
+const https = require('https');
+const crypto = require('crypto');
 const dotenv = require('dotenv');
 const { OAuth2Client } = require('google-auth-library');
 const mongoose = require('mongoose');
@@ -23,6 +25,16 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 const app = express();
+
+// ── Security Headers ───────────────────────────────────────────────────
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+});
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -32,21 +44,116 @@ app.use('/assets', express.static(path.join(__dirname, 'dist', 'assets')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.set('trust proxy', true);
 
+const SESSION_SECRET = process.env.SESSION_SECRET || 'mahurzari_village_portal_secure_key_2026';
+
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'gram-panchayat-water-secret-key-12345',
+  secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 365 * 24 * 60 * 60 * 1000 } // 1 year persistent session
+  cookie: {
+    maxAge: 30 * 24 * 60 * 60 * 1000,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  }
 }));
+
+// ── Cryptographic Authentication & Password Security ───────────────────
+function hashPassword(password) {
+  if (!password) return '';
+  const salt = crypto.randomBytes(16).toString('hex');
+  const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+  return `${salt}:${hash}`;
+}
+
+function verifyPassword(password, storedPassword) {
+  if (!password || !storedPassword) return false;
+  // Seamless backward compatibility for legacy plaintext passwords
+  if (!storedPassword.includes(':')) {
+    return password === storedPassword;
+  }
+  try {
+    const [salt, originalHash] = storedPassword.split(':');
+    if (!salt || !originalHash) return false;
+    const hash = crypto.pbkdf2Sync(password, salt, 100000, 64, 'sha512').toString('hex');
+    if (hash.length !== originalHash.length) return false;
+    return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(originalHash, 'hex'));
+  } catch (e) {
+    return false;
+  }
+}
+
+function generateAuthToken(payload) {
+  const data = {
+    ...payload,
+    exp: Date.now() + 30 * 24 * 60 * 60 * 1000 // 30-day validity
+  };
+  const body = Buffer.from(JSON.stringify(data)).toString('base64url');
+  const signature = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
+  return `${body}.${signature}`;
+}
+
+function verifyAuthToken(token) {
+  if (!token || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 2) return null;
+  const [body, signature] = parts;
+  try {
+    const expectedSig = crypto.createHmac('sha256', SESSION_SECRET).update(body).digest('base64url');
+    if (signature.length !== expectedSig.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) {
+      return null;
+    }
+    const data = JSON.parse(Buffer.from(body, 'base64url').toString('utf8'));
+    if (data.exp && data.exp < Date.now()) {
+      return null;
+    }
+    return data;
+  } catch (e) {
+    return null;
+  }
+}
+
+function extractUserFromRequest(req) {
+  if (req.session?.user) return req.session.user;
+
+  let rawToken = null;
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    rawToken = authHeader.slice(7).trim();
+  } else if (req.headers['x-auth-token']) {
+    rawToken = req.headers['x-auth-token'].trim();
+  } else if (req.cookies && req.cookies.auth_token) {
+    rawToken = req.cookies.auth_token;
+  }
+
+  if (rawToken) {
+    const payload = verifyAuthToken(rawToken);
+    if (payload && payload.email) {
+      return {
+        email: payload.email,
+        name: payload.name || payload.email.split('@')[0],
+        role: payload.role || 'People/User',
+        ip: req.ip || req.connection?.remoteAddress || '127.0.0.1',
+        location: payload.location || 'Verified Session',
+        loginTime: payload.loginTime || new Date().toISOString()
+      };
+    }
+  }
+  return null;
+}
 
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "547185696384-nfog7eetv58j1vh6c75u42jd88gcqsi2.apps.googleusercontent.com";
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
 // ── Database Setup (MongoDB with Serverless Caching) ───────────────────
-const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://atharvajadhav20075848_db_user:T6Xj3t4KOCtpfbXT@cluster0.hrxwdsn.mongodb.net/?appName=Cluster0";
+const MONGO_URI = process.env.MONGO_URI;
 
 let isConnecting = false;
 async function connectToDatabase() {
+  if (!MONGO_URI) {
+    console.error('CRITICAL: MONGO_URI environment variable is not defined!');
+    return null;
+  }
   if (mongoose.connection.readyState === 1) return mongoose.connection;
   if (isConnecting) {
     await new Promise(resolve => mongoose.connection.once('open', resolve));
@@ -66,29 +173,19 @@ async function connectToDatabase() {
     isConnecting = false;
   }
 }
-connectToDatabase();
+if (MONGO_URI) {
+  connectToDatabase();
+}
 
 app.use(async (req, res, next) => {
-  if (mongoose.connection.readyState !== 1) {
+  if (MONGO_URI && mongoose.connection.readyState !== 1) {
     await connectToDatabase();
   }
   
-  // Global Session Auto-Hydration for Serverless environments
-  if (!req.session.user && req.headers['x-user-email']) {
-    try {
-      const decodedEmail = decodeURIComponent(req.headers['x-user-email']).toLowerCase().trim();
-      const user = await User.findOne({ email: decodedEmail });
-      if (user) {
-        req.session.user = {
-          email: user.email,
-          name: user.email.split('@')[0],
-          role: user.role,
-          ip: req.ip || req.connection?.remoteAddress || '127.0.0.1',
-          location: 'Saved Device',
-          loginTime: new Date().toISOString()
-        };
-      }
-    } catch(e) {}
+  // Authenticate user via cryptographic token or session
+  const verifiedUser = extractUserFromRequest(req);
+  if (verifiedUser) {
+    req.session.user = verifiedUser;
   }
   next();
 });
@@ -171,11 +268,11 @@ async function seedDefaultUsers() {
     const count = await User.countDocuments();
     if (count === 0) {
       await User.insertMany([
-        { email: 'admin@village.gov.in', name: 'Panchayat Admin', role: 'Admin', password: 'admin123' },
-        { email: 'sarpanch@village.gov.in', name: 'Gram Sarpanch', role: 'Sarpanch', password: 'sarpanch123' },
-        { email: 'resident@village.gov.in', name: 'Sample Resident', role: 'People/User', password: 'user123' }
+        { email: 'admin@village.gov.in', name: 'Panchayat Admin', role: 'Admin', password: hashPassword('admin123') },
+        { email: 'sarpanch@village.gov.in', name: 'Gram Sarpanch', role: 'Sarpanch', password: hashPassword('sarpanch123') },
+        { email: 'resident@village.gov.in', name: 'Sample Resident', role: 'People/User', password: hashPassword('user123') }
       ]);
-      console.log("Seeded default users to MongoDB.");
+      console.log("Seeded default users with secure hashed credentials.");
     }
   } catch (e) {
     console.error('Error seeding users:', e.message);
@@ -188,9 +285,9 @@ mongoose.connection.once('open', () => {
 
 // ── Cloudinary Image & Audio Upload Setup (with Instant Base64 Fallback) ──
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || "rqltdk0j",
-  api_key: process.env.CLOUDINARY_API_KEY || "456694174673441",
-  api_secret: process.env.CLOUDINARY_API_SECRET || "I4-h0pKuAsiCQtG0e4ZCNylQZzM"
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET
 });
 
 // Use memory storage so file is always instantly available as a buffer
@@ -274,34 +371,39 @@ function getLocationFromIP(ip) {
     const privatePatterns = ['127.0.0.1', '::1', '::ffff:127.0.0.1', '192.168.', '10.', '172.16.'];
     const isPrivate = privatePatterns.some(p => ip.startsWith(p));
     if (isPrivate) {
-      return resolve({ city: 'Pune', region: 'Maharashtra', country: 'India', ip: ip, lat: 18.5204, lon: 73.8567 });
+      return resolve({ city: 'Mahurzari', region: 'Maharashtra', country: 'India', ip: ip, lat: 21.235, lon: 79.005 });
     }
 
-    const url = `http://ip-api.com/json/${ip}?fields=status,city,regionName,country,lat,lon,query`;
-    http.get(url, (resp) => {
+    const url = `https://ipapi.co/${ip}/json/`;
+    const req = https.get(url, { headers: { 'User-Agent': 'MahurzariVillagePortal/1.0' }, timeout: 3500 }, (resp) => {
       let data = '';
       resp.on('data', chunk => data += chunk);
       resp.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          if (parsed.status === 'success') {
+          if (parsed && !parsed.error) {
             resolve({
-              city: parsed.city || 'Unknown',
-              region: parsed.regionName || '',
-              country: parsed.country || '',
-              ip: parsed.query || ip,
-              lat: parsed.lat || 0,
-              lon: parsed.lon || 0
+              city: parsed.city || 'Mahurzari',
+              region: parsed.region || 'Maharashtra',
+              country: parsed.country_name || 'India',
+              ip: parsed.ip || ip,
+              lat: parsed.latitude || 21.235,
+              lon: parsed.longitude || 79.005
             });
           } else {
-            resolve({ city: 'Unknown', region: '', country: '', ip: ip, lat: 0, lon: 0 });
+            resolve({ city: 'Mahurzari', region: 'Maharashtra', country: 'India', ip: ip, lat: 21.235, lon: 79.005 });
           }
         } catch (e) {
-          resolve({ city: 'Unknown', region: '', country: '', ip: ip, lat: 0, lon: 0 });
+          resolve({ city: 'Mahurzari', region: 'Maharashtra', country: 'India', ip: ip, lat: 21.235, lon: 79.005 });
         }
       });
-    }).on('error', () => {
-      resolve({ city: 'Unknown', region: '', country: '', ip: ip, lat: 0, lon: 0 });
+    });
+    req.on('error', () => {
+      resolve({ city: 'Mahurzari', region: 'Maharashtra', country: 'India', ip: ip, lat: 21.235, lon: 79.005 });
+    });
+    req.on('timeout', () => {
+      req.destroy();
+      resolve({ city: 'Mahurzari', region: 'Maharashtra', country: 'India', ip: ip, lat: 21.235, lon: 79.005 });
     });
   });
 }
@@ -313,26 +415,17 @@ function formatLocationString(loc) {
 
 function requireAuth(allowedRoles) {
   return async (req, res, next) => {
-    // If session lost in serverless cold start, try restoring from x-user-email header
-    if (!req.session.user && req.headers['x-user-email']) {
-      try {
-        const decodedEmail = decodeURIComponent(req.headers['x-user-email']).toLowerCase().trim();
-        const user = await User.findOne({ email: decodedEmail });
-        if (user) {
-          req.session.user = {
-            email: user.email,
-            name: user.email.split('@')[0],
-            role: user.role,
-            ip: req.ip || '127.0.0.1',
-            location: 'Saved Device',
-            loginTime: new Date().toISOString()
-          };
-        }
-      } catch(e) {}
+    const verifiedUser = extractUserFromRequest(req);
+    if (verifiedUser) {
+      req.session.user = verifiedUser;
     }
 
-    if (!req.session.user) return res.status(401).json({ error: 'Unauthorized' });
-    if (allowedRoles && !allowedRoles.includes(req.session.user.role)) return res.status(403).json({ error: 'Forbidden' });
+    if (!req.session?.user) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required.' });
+    }
+    if (allowedRoles && !allowedRoles.includes(req.session.user.role)) {
+      return res.status(403).json({ error: 'Forbidden: Insufficient permissions.' });
+    }
     next();
   };
 }
@@ -366,8 +459,13 @@ app.post('/api/auth/manual', async (req, res) => {
     if (!password) {
       return res.status(400).json({ error: 'Password is required for Official (Sarpanch / Admin) accounts.', isOfficial: true });
     }
-    if (!user || user.password !== password) {
+    if (!user || !verifyPassword(password, user.password)) {
       return res.status(401).json({ error: 'Access Denied', message: 'Invalid official credentials.' });
+    }
+    // Automatically migrate legacy plaintext password to PBKDF2 hash
+    if (user.password && !user.password.includes(':')) {
+      user.password = hashPassword(password);
+      await user.save().catch(() => {});
     }
   } else {
     // Resident / Citizen Login: Instant access, auto-register if new
@@ -377,7 +475,7 @@ app.post('/api/auth/manual', async (req, res) => {
         email: cleanEmail,
         name: displayName,
         role: 'People/User',
-        password: 'citizen_auto_auth'
+        password: hashPassword('citizen_auto_auth')
       });
     } else if (rawName && !user.name) {
       user.name = displayName;
@@ -414,6 +512,13 @@ app.post('/api/auth/manual', async (req, res) => {
     loginTime: new Date().toISOString()
   };
 
+  const authToken = generateAuthToken({
+    email: user.email,
+    name: finalName,
+    role: user.role,
+    location: locationStr
+  });
+
   await ActiveSession.findOneAndDelete({ email: user.email });
   await ActiveSession.create({ 
     email: user.email,
@@ -437,7 +542,14 @@ app.post('/api/auth/manual', async (req, res) => {
     phone: 'N/A'
   });
 
-  res.json({ success: true, user: req.session.user });
+  res.cookie('auth_token', authToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 30 * 24 * 60 * 60 * 1000
+  });
+
+  res.json({ success: true, user: req.session.user, token: authToken });
 });
 
 app.post('/api/auth/google', async (req, res) => {
@@ -472,7 +584,7 @@ app.post('/api/auth/google', async (req, res) => {
       email: email,
       name: name,
       role: 'People/User',
-      password: 'google_oauth_user'
+      password: hashPassword('google_oauth_user')
     });
   }
 
@@ -504,6 +616,13 @@ app.post('/api/auth/google', async (req, res) => {
     lon: finalLon,
     loginTime: new Date().toISOString() 
   };
+
+  const authToken = generateAuthToken({
+    email: user.email,
+    name: finalName,
+    role: user.role,
+    location: locationStr
+  });
   
   await ActiveSession.findOneAndDelete({ email });
   await ActiveSession.create({ 
@@ -528,36 +647,30 @@ app.post('/api/auth/google', async (req, res) => {
     phone: 'N/A'
   });
 
-  res.json({ success: true, user: req.session.user });
+  res.cookie('auth_token', authToken, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 30 * 24 * 60 * 60 * 1000
+  });
+
+  res.json({ success: true, user: req.session.user, token: authToken });
 });
 
 app.get('/api/auth/status', async (req, res) => {
-  if (!req.session.user && req.headers['x-user-email']) {
-    try {
-      const decodedEmail = decodeURIComponent(req.headers['x-user-email']).toLowerCase().trim();
-      const user = await User.findOne({ email: decodedEmail });
-      if (user) {
-        req.session.user = {
-          email: user.email,
-          name: user.email.split('@')[0],
-          role: user.role,
-          ip: req.ip || '127.0.0.1',
-          location: 'Saved Device',
-          loginTime: new Date().toISOString()
-        };
-      }
-    } catch(e) {}
+  const verifiedUser = extractUserFromRequest(req);
+  if (verifiedUser) {
+    req.session.user = verifiedUser;
+    return res.json({ loggedIn: true, user: verifiedUser });
   }
 
-  if (req.session.user) {
-    res.json({ loggedIn: true, user: req.session.user });
-  } else {
-    res.json({ loggedIn: false });
-  }
+  res.json({ loggedIn: false });
 });
 
 app.post('/api/auth/logout', async (req, res) => {
-  const email = (req.body?.email || req.session?.user?.email || (req.headers['x-user-email'] ? decodeURIComponent(req.headers['x-user-email']) : '')).toLowerCase().trim();
+  const sessionEmail = req.session?.user?.email;
+  const verifiedUser = extractUserFromRequest(req);
+  const email = (sessionEmail || verifiedUser?.email || req.body?.email || '').toLowerCase().trim();
   if (email) {
     await ActiveSession.findOneAndDelete({ email });
   }
@@ -574,33 +687,38 @@ app.post('/api/auth/logout', async (req, res) => {
   }
   req.session?.destroy(() => {
     res.clearCookie('connect.sid');
+    res.clearCookie('auth_token');
     res.json({ success: true });
   });
 });
 
 // ── Sarpanch Change Credentials API ─────────────────────────────────
-app.put('/api/sarpanch/change-credentials', async (req, res) => {
+app.put('/api/sarpanch/change-credentials', requireAuth(['Sarpanch', 'Admin']), async (req, res) => {
   try {
-    const { currentEmail, newEmail, newPassword } = req.body;
-    const headerEmail = req.headers['x-user-email'] ? decodeURIComponent(req.headers['x-user-email']).toLowerCase().trim() : null;
+    const { currentPassword, newEmail, newPassword } = req.body;
     const sessionEmail = req.session?.user?.email;
 
-    const targetEmail = (currentEmail || headerEmail || sessionEmail || '').toLowerCase().trim();
+    if (!sessionEmail) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
+    const user = await User.findOne({ email: sessionEmail.toLowerCase().trim() });
+    if (!user) {
+      return res.status(404).json({ error: 'User account not found.' });
+    }
+
+    // Verify current password for Sarpanch
+    if (req.session.user.role === 'Sarpanch') {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password is required to update credentials.' });
+      }
+      if (!verifyPassword(currentPassword, user.password)) {
+        return res.status(401).json({ error: 'Current password does not match.' });
+      }
+    }
 
     if (!newPassword || newPassword.trim().length < 4) {
       return res.status(400).json({ error: 'Password must be at least 4 characters long.' });
-    }
-
-    // Locate Sarpanch account by email, or role 'Sarpanch'
-    let user = null;
-    if (targetEmail) {
-      user = await User.findOne({ email: targetEmail });
-    }
-    if (!user) {
-      user = await User.findOne({ role: 'Sarpanch' });
-    }
-    if (!user) {
-      return res.status(404).json({ error: 'Sarpanch account not found.' });
     }
 
     const cleanNewEmail = (newEmail && newEmail.trim()) ? newEmail.toLowerCase().trim() : user.email;
@@ -613,23 +731,28 @@ app.put('/api/sarpanch/change-credentials', async (req, res) => {
 
     const oldEmail = user.email;
     user.email = cleanNewEmail;
-    user.password = newPassword.trim();
-    user.role = 'Sarpanch';
+    user.password = hashPassword(newPassword.trim());
     await user.save();
 
     // Clear previous active session & update current session
     await ActiveSession.deleteMany({ email: oldEmail });
     if (req.session?.user) {
       req.session.user.email = cleanNewEmail;
-      req.session.user.role = 'Sarpanch';
     }
+
+    const newToken = generateAuthToken({
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      location: req.session.user.location
+    });
 
     // Record credential update in village feed
     await Feed.create({
       id: Date.now(),
       name: user.name || 'Honorable Sarpanch',
       time: new Date().toISOString(),
-      action: 'Updated Sarpanch administrative login credentials.',
+      action: 'Updated login credentials securely.',
       location: 'Panchayat Bhavan',
       ip: req.ip || '127.0.0.1',
       phone: 'N/A'
@@ -637,7 +760,8 @@ app.put('/api/sarpanch/change-credentials', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Sarpanch credentials updated successfully!',
+      message: 'Credentials updated successfully!',
+      token: newToken,
       user: {
         email: user.email,
         name: user.name,
@@ -694,9 +818,9 @@ app.put('/api/users/:email/role', requireAuth(['Admin', 'Sarpanch']), async (req
     const oldRole = user.role;
     user.role = role;
 
-    // If role promoted to official and password is missing, set default password
+    // If role promoted to official and password is missing, set default hashed password
     if ((role === 'Admin' || role === 'Sarpanch') && (!user.password || user.password === 'citizen_auto_auth' || user.password === 'google_oauth_user')) {
-      user.password = role === 'Sarpanch' ? 'sarpanch123' : 'admin123';
+      user.password = hashPassword(role === 'Sarpanch' ? 'sarpanch123' : 'admin123');
     }
 
     await user.save();
@@ -885,15 +1009,15 @@ app.get('/api/admin/users', requireAuth(['Admin']), async (req, res) => {
 
 app.put('/api/admin/users/:email/password', requireAuth(['Admin']), async (req, res) => {
   const { password } = req.body;
-  if (!password) return res.status(400).json({ error: 'Password is required' });
+  if (!password || password.trim().length < 4) return res.status(400).json({ error: 'Password must be at least 4 characters long.' });
   
   const user = await User.findOneAndUpdate(
     { email: req.params.email.toLowerCase() },
-    { password: password },
+    { password: hashPassword(password.trim()) },
     { new: true }
   );
   if (!user) return res.status(404).json({ error: 'User not found' });
-  res.json({ success: true, user });
+  res.json({ success: true, user: { email: user.email, name: user.name, role: user.role } });
 });
 
 app.put('/api/admin/users/:email/role', requireAuth(['Admin']), async (req, res) => {
@@ -906,7 +1030,7 @@ app.put('/api/admin/users/:email/role', requireAuth(['Admin']), async (req, res)
     { new: true }
   );
   if (!user) return res.status(404).json({ error: 'User not found' });
-  res.json({ success: true, user });
+  res.json({ success: true, user: { email: user.email, name: user.name, role: user.role } });
 });
 
 app.get('/api/admin/roles', requireAuth(['Admin']), async (req, res) => {
@@ -921,14 +1045,14 @@ app.post('/api/admin/roles', requireAuth(['Admin']), async (req, res) => {
   if (!email || !role) return res.status(400).json({ error: 'Email and role required' });
   
   const updateData = { role: role };
-  if (password) updateData.password = password;
+  if (password) updateData.password = hashPassword(password.trim());
 
   const user = await User.findOneAndUpdate(
     { email: email.toLowerCase().trim() },
     { $set: updateData },
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
-  res.json({ success: true, user });
+  res.json({ success: true, user: { email: user.email, name: user.name, role: user.role } });
 });
 
 app.delete('/api/admin/roles', requireAuth(['Admin']), async (req, res) => {
@@ -1178,12 +1302,12 @@ app.delete('/api/issues/:id', requireAuth(['Admin']), async (req, res) => {
   res.json({ success: true });
 });
 
-app.put('/api/issues/:id/resolve', uploadSafe('photo'), async (req, res) => {
+app.put('/api/issues/:id/resolve', requireAuth(['Admin', 'Sarpanch', 'Plumber/Technician']), uploadSafe('photo'), async (req, res) => {
   const issueId = parseInt(req.params.id, 10);
   const existing = await Issue.findOne({ id: issueId });
   if (!existing) return res.status(404).json({ error: 'Issue not found' });
 
-  const userEmail = req.session?.user?.email || (req.headers['x-user-email'] ? decodeURIComponent(req.headers['x-user-email']) : null) || 'Sarpanch Office';
+  const userEmail = req.session?.user?.email || 'Sarpanch Office';
   const userRole = req.session?.user?.role || 'Gram Panchayat';
 
   let resolutionPhoto = null;
@@ -1274,7 +1398,6 @@ if (require.main === module) {
 
 // Self-ping to prevent sleep
 const cron = require('node-cron');
-const https = require('https');
 cron.schedule('*/1 * * * *', () => {
   const baseUrl = process.env.SERVER_URL ? process.env.SERVER_URL.replace(/\/$/, '') : `http://localhost:${PORT}`;
   const url = `${baseUrl}/api/auth/status`;
