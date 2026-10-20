@@ -1,8 +1,18 @@
 import React, { useState, useEffect } from 'react';
 
+const BANNER_DISMISSED_KEY = 'gram_apk_banner_dismissed_until';
+
 export default function ApkBanner() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissed, setDismissed] = useState(() => {
+    try {
+      const until = localStorage.getItem(BANNER_DISMISSED_KEY);
+      if (until && Date.now() < parseInt(until, 10)) {
+        return true;
+      }
+    } catch (e) {}
+    return false;
+  });
 
   useEffect(() => {
     const handleBeforeInstall = (e) => {
@@ -12,6 +22,15 @@ export default function ApkBanner() {
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
   }, []);
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    try {
+      // 24 hours from now (1 day cooldown)
+      const oneDayLater = Date.now() + 24 * 60 * 60 * 1000;
+      localStorage.setItem(BANNER_DISMISSED_KEY, oneDayLater.toString());
+    } catch (e) {}
+  };
 
   const triggerPwaInstall = async () => {
     if (deferredPrompt) {
@@ -66,9 +85,9 @@ export default function ApkBanner() {
 
           {/* Dismiss Button */}
           <button
-            onClick={() => setDismissed(true)}
-            className="p-1.5 text-white/70 hover:text-white rounded-lg transition-colors"
-            title="Dismiss banner"
+            onClick={handleDismiss}
+            className="p-1.5 text-white/70 hover:text-white rounded-lg transition-colors cursor-pointer"
+            title="Dismiss banner for 24h"
           >
             <span className="material-symbols-outlined text-base">close</span>
           </button>
