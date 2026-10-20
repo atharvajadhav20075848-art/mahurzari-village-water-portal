@@ -119,7 +119,13 @@ export const translations = {
     role_plumber: "Plumber (Field Crew)",
     role_sarpanch: "Sarpanch (Panchayat Head)",
     role_admin: "Admin (Panchayat Official)",
-    role_updated_success: "User role & access updated successfully!"
+    role_updated_success: "User role & access updated successfully!",
+    tab_citizen_login: "Citizen Direct (Gmail)",
+    tab_official_login: "Official ID & Password",
+    citizen_tab_sub: "No password needed. Any resident can login instantly with Gmail.",
+    official_tab_sub: "For Sarpanch, Gram Panchayat Staff & Administrators.",
+    enter_as_citizen: "Enter Portal Directly",
+    login_as_official: "Login with Credentials"
   },
   mr: {
     portal_title: "ग्राम जल",
@@ -241,7 +247,13 @@ export const translations = {
     role_plumber: "प्लंबर (दुरुस्ती दल)",
     role_sarpanch: "ग्राम सरपंच (प्रमुख)",
     role_admin: "पंचायत प्रशासक (Admin)",
-    role_updated_success: "वापरकर्ता भूमिका यशस्वीरीत्या बदलली!"
+    role_updated_success: "वापरकर्ता भूमिका यशस्वीरीत्या बदलली!",
+    tab_citizen_login: "नागरिक डायरेक्ट (Gmail)",
+    tab_official_login: "अधिकारी ID व पासवर्ड",
+    citizen_tab_sub: "कोणत्याही पासवर्डची गरज नाही. कोणताही ग्रामस्थ थेट Gmail ने प्रवेश करू शकतो.",
+    official_tab_sub: "सरपंच, ग्रामपंचायत कर्मचारी व प्रशासकांसाठी.",
+    enter_as_citizen: "थेट पोर्टलमध्ये जा",
+    login_as_official: "पासवर्डने लॉगिन करा"
   },
   hi: {
     portal_title: "ग्राम जल",
@@ -363,7 +375,13 @@ export const translations = {
     role_plumber: "प्लंबर (मरम्मत दल)",
     role_sarpanch: "ग्राम सरपंच (प्रमुख)",
     role_admin: "पंचायत प्रशासक (Admin)",
-    role_updated_success: "उपयोगकर्ता का पद सफलतापूर्वक अपडेट हुआ!"
+    role_updated_success: "उपयोगकर्ता का पद सफलतापूर्वक अपडेट हुआ!",
+    tab_citizen_login: "नागरिक डायरेक्ट (Gmail)",
+    tab_official_login: "अधिकारी ID व पासवर्ड",
+    citizen_tab_sub: "पासवर्ड की कोई जरूरत नहीं। कोई भी ग्रामीण सीधे Gmail से प्रवेश कर सकता है।",
+    official_tab_sub: "सरपंच, ग्राम पंचायत कर्मचारी व व्यवस्थापकों हेतु।",
+    enter_as_citizen: "सीधे पोर्टल में जाएं",
+    login_as_official: "पासवर्ड से लॉगिन करें"
   }
 };
 

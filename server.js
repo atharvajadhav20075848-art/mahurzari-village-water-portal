@@ -364,7 +364,7 @@ app.post('/api/auth/manual', async (req, res) => {
 
   if (isOfficial) {
     if (!password) {
-      return res.status(400).json({ error: 'Password is required for Official accounts' });
+      return res.status(400).json({ error: 'Password is required for Official (Sarpanch / Admin) accounts.', isOfficial: true });
     }
     if (!user || user.password !== password) {
       return res.status(401).json({ error: 'Access Denied', message: 'Invalid official credentials.' });
