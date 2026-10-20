@@ -124,10 +124,11 @@ export default function App() {
 
   // 6. Logout Handler
   const handleLogout = async () => {
-    if (!confirm("Are you sure you want to log out?")) return;
     const emailToLogout = currentUser?.email || localStorage.getItem('gram_user_email');
     localStorage.removeItem('gram_user_email');
     localStorage.removeItem('gram_user_role');
+    setCurrentUser(null);
+    window.history.pushState(null, '', '/login');
     try {
       await fetch('/api/auth/logout', { 
         method: 'POST',
@@ -135,8 +136,6 @@ export default function App() {
         body: JSON.stringify({ email: emailToLogout })
       });
     } catch (e) {}
-    setCurrentUser(null);
-    window.history.pushState(null, '', '/login');
   };
 
   // Loading state
