@@ -181,7 +181,10 @@ async function seedDefaultUsers() {
     console.error('Error seeding users:', e.message);
   }
 }
-mongoose.connection.once('open', seedDefaultUsers);
+mongoose.connection.once('open', () => {
+  seedDefaultUsers();
+  enforceMax5CloudinaryPhotos().catch(() => {});
+});
 
 // ── Cloudinary Image & Audio Upload Setup (with Instant Base64 Fallback) ──
 cloudinary.config({
@@ -205,6 +208,39 @@ const uploadSafe = (fieldName) => (req, res, next) => {
   });
 };
 
+// Strict Rolling Buffer for Cloudinary: Keep max 5 photos, auto-delete oldest when 6th arrives
+async function enforceMax5CloudinaryPhotos() {
+  try {
+    const result = await new Promise((resolve, reject) => {
+      cloudinary.api.resources(
+        { type: 'upload', prefix: 'village_water_portal', max_results: 100 },
+        (err, res) => {
+          if (err) return reject(err);
+          resolve(res);
+        }
+      );
+    });
+
+    if (result && Array.isArray(result.resources) && result.resources.length > 5) {
+      // Sort ascending by created_at (oldest first)
+      const sorted = result.resources.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      const deleteCount = sorted.length - 5;
+      const toDelete = sorted.slice(0, deleteCount);
+      console.log(`[Cloudinary Rolling Prune] Deleting ${deleteCount} oldest photos to maintain strict max 5 limit...`);
+      for (const item of toDelete) {
+        try {
+          await cloudinary.uploader.destroy(item.public_id);
+          console.log(`[Cloudinary Rolling Prune] Removed oldest photo: ${item.public_id}`);
+        } catch (delErr) {
+          console.warn(`[Cloudinary Rolling Prune] Failed to remove ${item.public_id}:`, delErr.message);
+        }
+      }
+    }
+  } catch (err) {
+    console.warn("[Cloudinary Rolling Prune] Error checking resources:", err.message);
+  }
+}
+
 // Fail-safe helper: Uploads to Cloudinary, and if Cloudinary fails, uses Base64 Data URI
 async function uploadToCloudinaryOrBase64(fileBuffer, mimetype, folder = 'village_water_portal') {
   if (!fileBuffer) return null;
@@ -218,6 +254,8 @@ async function uploadToCloudinaryOrBase64(fileBuffer, mimetype, folder = 'villag
             const base64Data = `data:${mimetype || 'image/jpeg'};base64,${fileBuffer.toString('base64')}`;
             return resolve(base64Data);
           }
+          // Enforce maximum 5 photos on Cloudinary immediately after upload
+          enforceMax5CloudinaryPhotos().catch(() => {});
           resolve(result.secure_url);
         }
       );
@@ -321,9 +359,8 @@ app.post('/api/auth/manual', async (req, res) => {
   }
 
   const cleanEmail = email.toLowerCase().trim();
-  const isOfficial = cleanEmail === 'admin@village.gov.in' || cleanEmail === 'sarpanch@village.gov.in';
-
   let user = await User.findOne({ email: cleanEmail });
+  const isOfficial = (user && (user.role === 'Admin' || user.role === 'Sarpanch')) || cleanEmail === 'admin@village.gov.in' || cleanEmail === 'sarpanch@village.gov.in';
 
   if (isOfficial) {
     if (!password) {
@@ -539,6 +576,78 @@ app.post('/api/auth/logout', async (req, res) => {
     res.clearCookie('connect.sid');
     res.json({ success: true });
   });
+});
+
+// ── Sarpanch Change Credentials API ─────────────────────────────────
+app.put('/api/sarpanch/change-credentials', async (req, res) => {
+  try {
+    const { currentEmail, newEmail, newPassword } = req.body;
+    const headerEmail = req.headers['x-user-email'] ? decodeURIComponent(req.headers['x-user-email']).toLowerCase().trim() : null;
+    const sessionEmail = req.session?.user?.email;
+
+    const targetEmail = (currentEmail || headerEmail || sessionEmail || '').toLowerCase().trim();
+
+    if (!newPassword || newPassword.trim().length < 4) {
+      return res.status(400).json({ error: 'Password must be at least 4 characters long.' });
+    }
+
+    // Locate Sarpanch account by email, or role 'Sarpanch'
+    let user = null;
+    if (targetEmail) {
+      user = await User.findOne({ email: targetEmail });
+    }
+    if (!user) {
+      user = await User.findOne({ role: 'Sarpanch' });
+    }
+    if (!user) {
+      return res.status(404).json({ error: 'Sarpanch account not found.' });
+    }
+
+    const cleanNewEmail = (newEmail && newEmail.trim()) ? newEmail.toLowerCase().trim() : user.email;
+    if (cleanNewEmail !== user.email) {
+      const existingUser = await User.findOne({ email: cleanNewEmail });
+      if (existingUser && existingUser._id.toString() !== user._id.toString()) {
+        return res.status(400).json({ error: 'This login email/ID is already in use by another account.' });
+      }
+    }
+
+    const oldEmail = user.email;
+    user.email = cleanNewEmail;
+    user.password = newPassword.trim();
+    user.role = 'Sarpanch';
+    await user.save();
+
+    // Clear previous active session & update current session
+    await ActiveSession.deleteMany({ email: oldEmail });
+    if (req.session?.user) {
+      req.session.user.email = cleanNewEmail;
+      req.session.user.role = 'Sarpanch';
+    }
+
+    // Record credential update in village feed
+    await Feed.create({
+      id: Date.now(),
+      name: user.name || 'Honorable Sarpanch',
+      time: new Date().toISOString(),
+      action: 'Updated Sarpanch administrative login credentials.',
+      location: 'Panchayat Bhavan',
+      ip: req.ip || '127.0.0.1',
+      phone: 'N/A'
+    });
+
+    res.json({
+      success: true,
+      message: 'Sarpanch credentials updated successfully!',
+      user: {
+        email: user.email,
+        name: user.name,
+        role: user.role
+      }
+    });
+  } catch (err) {
+    console.error("Change credentials error:", err);
+    res.status(500).json({ error: 'Internal server error while updating credentials.' });
+  }
 });
 
 // ── Notifications APIs ──────────────────────────────────────────────

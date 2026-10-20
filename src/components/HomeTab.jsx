@@ -1,13 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { getTranslation } from '../utils/translations';
 
-export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) {
+export default function HomeTab({ currentUser, setActiveTab, language = 'en', onUserUpdate }) {
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [broadcastOpen, setBroadcastOpen] = useState(false);
   const [broadcastTitle, setBroadcastTitle] = useState('');
   const [broadcastMsg, setBroadcastMsg] = useState('');
   const [broadcastSending, setBroadcastSending] = useState(false);
+
+  // Sarpanch credential change state
+  const [credentialOpen, setCredentialOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [credentialSaving, setCredentialSaving] = useState(false);
 
   const t = (key) => getTranslation(language, key);
   const isSarpanch = currentUser && currentUser.role === 'Sarpanch';
@@ -64,9 +72,67 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
     }
   };
 
-  // Strictly maximum 5 active and maximum 5 resolved reports
-  const pendingIssues = issues.filter(i => i.status !== 'Resolved').slice(0, 5);
+  // Handle Sarpanch credential change
+  const handleCredentialChange = async (e) => {
+    e.preventDefault();
+    if (!newPassword.trim()) {
+      alert(t('password_required') || "New password is required.");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      alert(t('password_mismatch') || "Passwords do not match!");
+      return;
+    }
+    if (newPassword.length < 4) {
+      alert(t('password_too_short') || "Password must be at least 4 characters.");
+      return;
+    }
+
+    setCredentialSaving(true);
+    try {
+      const targetEmail = currentUser.email;
+      const savedEmail = localStorage.getItem('gram_user_email') || currentUser.email;
+
+      const res = await fetch(`/api/sarpanch/change-credentials`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-email': encodeURIComponent(savedEmail)
+        },
+        body: JSON.stringify({
+          currentEmail: targetEmail,
+          newEmail: newEmail.trim() || targetEmail,
+          newPassword: newPassword
+        })
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        alert("✅ " + (t('credentials_updated') || "Credentials updated successfully! Please re-login with new credentials."));
+        setCredentialOpen(false);
+        setNewEmail('');
+        setNewPassword('');
+        setConfirmPassword('');
+        // If email changed, update localStorage and state
+        const updatedEmail = newEmail.trim() ? newEmail.trim().toLowerCase() : targetEmail;
+        localStorage.setItem('gram_user_email', updatedEmail);
+        if (onUserUpdate && data.user) {
+          onUserUpdate(data.user);
+        }
+      } else {
+        alert(data.error || "Failed to update credentials.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Server connection error.");
+    } finally {
+      setCredentialSaving(false);
+    }
+  };
+
+  // Only Resolved reports for home feed
   const resolvedIssues = issues.filter(i => i.status === 'Resolved').slice(0, 5);
+  const pendingCount = issues.filter(i => i.status !== 'Resolved').length;
 
   return (
     <div className="flex flex-col gap-6 max-w-7xl mx-auto px-3 sm:px-6 py-4 animate-fadeIn pb-20 md:pb-8">
@@ -117,47 +183,65 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
 
       {/* 👑 SPECIAL SARPANCH EXECUTIVE DESK (Honorable Sarpanch Panel) */}
       {isStaff && (
-        <section className="bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border-2 border-amber-500/40 rounded-3xl p-5 sm:p-6 shadow-md flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div className="flex items-center gap-3.5">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold text-2xl shrink-0 shadow-md">
-              <span className="material-symbols-outlined text-3xl">verified_user</span>
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="bg-amber-500 text-white text-[10px] font-headline font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full">
-                  {isSarpanch ? "OFFICIAL SARPANCH" : "PANCHAYAT ADMIN"}
-                </span>
-                <span className="text-xs text-amber-700 font-bold">
-                  {t('sarpanch_badge')}
-                </span>
+        <section className="bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border-2 border-amber-500/40 rounded-3xl p-5 sm:p-6 shadow-md flex flex-col gap-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold text-2xl shrink-0 shadow-md">
+                <span className="material-symbols-outlined text-3xl">verified_user</span>
               </div>
-              <h3 className="font-headline font-bold text-lg text-on-surface mt-0.5">
-                {t('sarpanch_panel')}
-              </h3>
-              <p className="text-xs text-on-surface-variant font-body">
-                {pendingIssues.length > 0 
-                  ? `⚠️ ${pendingIssues.length} reports awaiting your verification & repair.` 
-                  : "All community reports are verified and solved!"}
-              </p>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="bg-amber-500 text-white text-[10px] font-headline font-extrabold uppercase tracking-widest px-2.5 py-0.5 rounded-full">
+                    {isSarpanch ? "OFFICIAL SARPANCH" : "PANCHAYAT ADMIN"}
+                  </span>
+                  <span className="text-xs text-amber-700 font-bold">
+                    {t('sarpanch_badge')}
+                  </span>
+                </div>
+                <h3 className="font-headline font-bold text-lg text-on-surface mt-0.5">
+                  {t('sarpanch_panel')}
+                </h3>
+                <p className="text-xs text-on-surface-variant font-body">
+                  {pendingCount > 0 
+                    ? `⚠️ ${pendingCount} reports awaiting your verification & repair.` 
+                    : "All community reports are verified and solved!"}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+              <button
+                onClick={() => setActiveTab('tasks')}
+                className="flex-1 sm:flex-initial px-4 py-2.5 bg-primary text-white hover:bg-primary/95 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">assignment_turned_in</span>
+                {t('verify_now')} ({pendingCount})
+              </button>
+              <button
+                onClick={() => setBroadcastOpen(true)}
+                className="flex-1 sm:flex-initial px-4 py-2.5 bg-secondary text-white hover:bg-secondary/95 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">campaign</span>
+                {t('broadcast_to_village')}
+              </button>
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 w-full sm:w-auto">
-            <button
-              onClick={() => setActiveTab('tasks')}
-              className="flex-1 sm:flex-initial px-4 py-2.5 bg-primary text-white hover:bg-primary/95 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-base">assignment_turned_in</span>
-              {t('verify_now')} ({pendingIssues.length})
-            </button>
-            <button
-              onClick={() => setBroadcastOpen(true)}
-              className="flex-1 sm:flex-initial px-4 py-2.5 bg-secondary text-white hover:bg-secondary/95 font-headline font-bold text-xs uppercase tracking-wider rounded-xl shadow-sm active:scale-95 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-base">campaign</span>
-              {t('broadcast_to_village')}
-            </button>
-          </div>
+          {/* Change ID/Password Button for Sarpanch */}
+          {isSarpanch && (
+            <div className="border-t border-amber-400/30 pt-3 mt-1">
+              <button
+                onClick={() => {
+                  setNewEmail(currentUser.email || '');
+                  setCredentialOpen(true);
+                }}
+                className="px-4 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/40 text-amber-800 font-headline font-bold text-xs uppercase tracking-wider rounded-xl active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-base">manage_accounts</span>
+                {t('change_credentials') || 'Change Login ID / Password'}
+              </button>
+            </div>
+          )}
         </section>
       )}
 
@@ -218,6 +302,129 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
         </div>
       )}
 
+      {/* 🔐 Sarpanch Credential Change Modal */}
+      {credentialOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-md w-full shadow-2xl border border-outline-variant animate-scaleUp">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2 text-amber-600">
+                <span className="material-symbols-outlined text-2xl">manage_accounts</span>
+                <h3 className="font-headline font-bold text-lg">{t('change_credentials') || 'Change Login Credentials'}</h3>
+              </div>
+              <button onClick={() => setCredentialOpen(false)} className="text-on-surface-variant hover:text-on-surface cursor-pointer">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Current info */}
+            <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl mb-4 flex items-center gap-3">
+              <span className="material-symbols-outlined text-amber-600 text-xl shrink-0">info</span>
+              <div>
+                <p className="text-xs font-headline font-bold text-amber-800 uppercase tracking-wider">{t('current_login') || 'Current Login'}</p>
+                <p className="text-sm text-amber-700 font-mono font-medium">{currentUser.email}</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleCredentialChange} className="flex flex-col gap-3">
+              {/* New Email */}
+              <div>
+                <label className="text-xs font-headline font-bold uppercase text-on-surface mb-1 block">
+                  {t('new_login_id') || 'New Login Email ID'}
+                </label>
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-3 text-on-surface-variant text-lg pointer-events-none">alternate_email</span>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={(e) => setNewEmail(e.target.value)}
+                    placeholder={currentUser.email}
+                    className="w-full pl-10 pr-3 py-2.5 bg-surface-container-low rounded-xl border border-outline-variant text-sm font-body focus:outline-none focus:border-primary"
+                  />
+                </div>
+                <p className="text-[10px] text-on-surface-variant mt-1">
+                  {t('leave_blank_email') || 'Leave as-is if you only want to change password'}
+                </p>
+              </div>
+
+              {/* New Password */}
+              <div>
+                <label className="text-xs font-headline font-bold uppercase text-on-surface mb-1 block">
+                  {t('new_password') || 'New Password'}
+                </label>
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-3 text-on-surface-variant text-lg pointer-events-none">lock</span>
+                  <input
+                    type={showNewPass ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    required
+                    className="w-full pl-10 pr-10 py-2.5 bg-surface-container-low rounded-xl border border-outline-variant text-sm font-body focus:outline-none focus:border-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPass(!showNewPass)}
+                    className="absolute right-3 text-on-surface-variant hover:text-on-surface p-0.5 rounded-full cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-lg">
+                      {showNewPass ? 'visibility' : 'visibility_off'}
+                    </span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Confirm Password */}
+              <div>
+                <label className="text-xs font-headline font-bold uppercase text-on-surface mb-1 block">
+                  {t('confirm_password') || 'Confirm Password'}
+                </label>
+                <div className="relative flex items-center">
+                  <span className="material-symbols-outlined absolute left-3 text-on-surface-variant text-lg pointer-events-none">lock_reset</span>
+                  <input
+                    type={showNewPass ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Re-enter new password"
+                    required
+                    className="w-full pl-10 pr-3 py-2.5 bg-surface-container-low rounded-xl border border-outline-variant text-sm font-body focus:outline-none focus:border-primary"
+                  />
+                </div>
+                {confirmPassword && confirmPassword !== newPassword && (
+                  <p className="text-[11px] text-error font-medium mt-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">error</span>
+                    {t('password_mismatch') || 'Passwords do not match'}
+                  </p>
+                )}
+                {confirmPassword && confirmPassword === newPassword && newPassword.length >= 4 && (
+                  <p className="text-[11px] text-secondary font-medium mt-1 flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                    {t('passwords_match') || 'Passwords match ✓'}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setCredentialOpen(false)}
+                  className="px-4 py-2 rounded-xl border border-outline-variant text-xs font-bold font-headline uppercase cursor-pointer"
+                >
+                  {t('cancel') || 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={credentialSaving || !newPassword || newPassword !== confirmPassword}
+                  className="px-4 py-2 bg-amber-500 text-white rounded-xl text-xs font-bold font-headline uppercase shadow-md flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-sm">save</span>
+                  {credentialSaving ? (t('saving') || 'Saving...') : (t('update_credentials') || 'Update Credentials')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ONLY Real Live Metrics Cards */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col">
@@ -243,7 +450,7 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
             </span>
           </div>
           <span className="text-3xl sm:text-4xl font-headline font-extrabold text-error mt-2">
-            {pendingIssues.length}
+            {pendingCount}
           </span>
           <span className="text-xs text-on-surface-variant mt-1 font-body">
             {t('under_maintenance')}
@@ -308,15 +515,16 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
         </div>
       </section>
 
-      {/* Recent Activity / Community Feed (Strictly Maximum 5 Reports) */}
+      {/* ✅ Recent SOLVED Reports Only — Community Success Feed */}
       <section className="flex flex-col gap-3">
         <div className="flex items-center justify-between">
           <h3 className="font-headline font-bold text-lg text-primary flex items-center gap-2">
-            <span className="material-symbols-outlined text-xl text-primary">feed</span>
-            {t('community_feed')} (Max 5)
+            <span className="material-symbols-outlined text-xl text-secondary">task_alt</span>
+            {t('recent_solved') || 'Recently Solved Reports'}
           </h3>
-          <span className="text-xs text-on-surface-variant font-medium">
-            {t('live_updates')}
+          <span className="text-xs text-on-surface-variant font-medium flex items-center gap-1">
+            <span className="material-symbols-outlined text-sm text-secondary">verified</span>
+            {t('verified_fixes') || 'Verified Fixes'}
           </span>
         </div>
 
@@ -325,13 +533,14 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
             <span className="material-symbols-outlined animate-spin text-2xl text-primary">progress_activity</span>
             <p className="mt-2">Loading village feed...</p>
           </div>
-        ) : issues.length === 0 ? (
-          <div className="bg-white p-6 rounded-2xl text-center text-on-surface-variant text-sm">
-            No issues reported yet.
+        ) : resolvedIssues.length === 0 ? (
+          <div className="bg-white p-6 rounded-2xl text-center text-on-surface-variant text-sm border border-outline-variant/60">
+            <span className="material-symbols-outlined text-4xl text-on-surface-variant/40 mb-2 block">inbox</span>
+            {t('no_solved_yet') || 'No resolved reports yet. Issues will appear here once fixed by the repair team.'}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {issues.slice(0, 5).map((item) => (
+            {resolvedIssues.map((item) => (
               <article key={item.id} className="bg-white p-4 rounded-2xl border border-outline-variant/60 shadow-sm flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -341,16 +550,12 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
                       {item.location}
                     </p>
                   </div>
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-headline font-bold uppercase tracking-wider shrink-0 ${
-                    item.status === 'Resolved' 
-                      ? 'bg-secondary-container text-secondary' 
-                      : 'bg-error-container text-on-error-container'
-                  }`}>
-                    {item.status === 'Resolved' ? t('after_fixed') : t('pending')}
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-headline font-bold uppercase tracking-wider shrink-0 bg-secondary-container text-secondary">
+                    {t('after_fixed')}
                   </span>
                 </div>
 
-                {/* Photos */}
+                {/* Before/After Photos */}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="relative rounded-xl overflow-hidden bg-surface-container aspect-video">
                     <span className="absolute top-1.5 left-1.5 bg-black/70 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase z-10">
@@ -363,10 +568,8 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
                     />
                   </div>
                   <div className="relative rounded-xl overflow-hidden bg-surface-container aspect-video">
-                    <span className={`absolute top-1.5 left-1.5 text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase z-10 ${
-                      item.status === 'Resolved' ? 'bg-secondary' : 'bg-black/50'
-                    }`}>
-                      {item.status === 'Resolved' ? t('after_fixed') : t('pending')}
+                    <span className="absolute top-1.5 left-1.5 bg-secondary text-white text-[9px] font-bold px-1.5 py-0.5 rounded uppercase z-10">
+                      {t('after_fixed')}
                     </span>
                     <img 
                       src={item.resolutionPhotoUrl || item.photoUrl || 'https://images.unsplash.com/photo-1541888946425-d0fbb186c5f7?auto=format&fit=crop&q=80&w=400'} 
@@ -376,9 +579,17 @@ export default function HomeTab({ currentUser, setActiveTab, language = 'en' }) 
                   </div>
                 </div>
 
-                <p className="text-xs text-on-surface-variant font-body line-clamp-2">
-                  {item.description}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-on-surface-variant font-body line-clamp-2 flex-1">
+                    {item.description}
+                  </p>
+                  {item.resolvedBy && (
+                    <span className="text-[10px] text-secondary font-medium ml-2 shrink-0 flex items-center gap-1">
+                      <span className="material-symbols-outlined text-[12px]">person</span>
+                      {item.resolvedBy.split('@')[0]}
+                    </span>
+                  )}
+                </div>
               </article>
             ))}
           </div>

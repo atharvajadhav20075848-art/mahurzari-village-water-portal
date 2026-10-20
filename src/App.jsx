@@ -210,7 +210,8 @@ export default function App() {
             <HomeTab 
               currentUser={currentUser} 
               setActiveTab={handleTabSwitch} 
-              language={language} 
+              language={language}
+              onUserUpdate={(updatedUser) => setCurrentUser(prev => ({ ...prev, ...updatedUser }))}
             />
           )}
 
