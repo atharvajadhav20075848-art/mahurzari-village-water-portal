@@ -730,9 +730,6 @@ app.post('/api/auth/google', async (req, res) => {
   }
 });
 
-  res.json({ success: true, user: req.session.user, token: authToken });
-});
-
 app.get('/api/auth/status', async (req, res) => {
   const verifiedUser = extractUserFromRequest(req);
   if (verifiedUser) {
