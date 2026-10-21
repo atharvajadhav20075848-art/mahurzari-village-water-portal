@@ -1510,9 +1510,23 @@ app.put('/api/issues/:id/resolve', requireAuth(['Admin', 'Sarpanch', 'Plumber/Te
   res.json({ success: true, issue: updated });
 });
 
+app.get(['/presentation', '/presentation.html'], (req, res) => {
+  const pPath = path.join(__dirname, 'public', 'presentation.html');
+  if (fs.existsSync(pPath)) {
+    return res.sendFile(pPath);
+  }
+  res.sendFile(path.join(__dirname, 'presentation.html'));
+});
+
+app.get('/Mahurzari_Water_Portal_Presentation.pptx', (req, res) => {
+  const pptxPath = path.join(__dirname, 'Mahurzari_Water_Portal_Presentation.pptx');
+  res.download(pptxPath, 'Mahurzari_Water_Portal_Presentation.pptx');
+});
+
 // ── Ultra-Fast React Single Page Application (0ms Tab Switching) ───
 const spaRoutes = ['/', '/app', '/mobile', '/admin', '/tasks', '/home', '/report', '/support', '/login'];
 spaRoutes.forEach((route) => {
+
   app.get(route, (req, res) => {
     // Prevent browser from caching old index.html bundles and eliminate white screen on normal reload
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
