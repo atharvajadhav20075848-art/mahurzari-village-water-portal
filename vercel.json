@@ -77,16 +77,12 @@
       "dest": "/public/sw.js"
     },
     {
-      "src": "/presentation",
-      "dest": "/dist/presentation.html"
-    },
-    {
-      "src": "/presentation.html",
-      "dest": "/dist/presentation.html"
+      "src": "/presentation(.*)",
+      "dest": "/api/index.js"
     },
     {
       "src": "/Mahurzari_Water_Portal_Presentation.pptx",
-      "dest": "/dist/Mahurzari_Water_Portal_Presentation.pptx"
+      "dest": "/api/index.js"
     },
     {
       "src": "/(.*)",

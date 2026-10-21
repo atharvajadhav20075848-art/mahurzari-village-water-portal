@@ -1510,7 +1510,7 @@ app.put('/api/issues/:id/resolve', requireAuth(['Admin', 'Sarpanch', 'Plumber/Te
   res.json({ success: true, issue: updated });
 });
 
-app.get(['/presentation', '/presentation.html'], (req, res) => {
+app.get(['/presentation', '/presentation.html', '/dist/presentation.html'], (req, res) => {
   const candidates = [
     path.join(__dirname, 'public', 'presentation.html'),
     path.join(process.cwd(), 'public', 'presentation.html'),
