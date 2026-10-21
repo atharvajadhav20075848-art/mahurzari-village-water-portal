@@ -116,31 +116,12 @@ export default function Navbar({
               {t('support')}
             </button>
 
-            <button
-              onClick={() => setActiveTab('presentation')}
-              className={`px-3 py-2 rounded-lg flex items-center gap-1.5 transition-all ${
-                activeTab === 'presentation' 
-                  ? 'bg-sky-600 text-white shadow-sm' 
-                  : 'text-sky-800 bg-sky-100/70 hover:bg-sky-200/80 font-bold border border-sky-300/60'
-              }`}
-              title="Gaon Gram Sabha PPT Presentation"
-            >
-              <span className="material-symbols-outlined text-[18px]">slideshow</span>
-              <span>PPT सादरीकरण</span>
-            </button>
+            {/* Admin or Sarpanch can access Presentation from Admin Panel if needed */}
           </nav>
         </div>
 
         {/* Right Section: Language, User Profile & Logout */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Quick PPT button for mobile */}
-          <button
-            onClick={() => setActiveTab('presentation')}
-            className="md:hidden px-2 py-1 rounded-lg bg-sky-600 hover:bg-sky-700 text-white font-bold text-[11px] flex items-center gap-1 shadow-sm"
-            title="PPT Presentation"
-          >
-            <span>📽️ PPT</span>
-          </button>
 
           {/* Notification Bell with Badge */}
           <button
