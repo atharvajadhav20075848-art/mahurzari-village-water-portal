@@ -1652,11 +1652,10 @@ const spaRoutes = ['/', '/app', '/mobile', '/admin', '/tasks', '/home', '/report
 spaRoutes.forEach((route) => {
 
   app.get(route, (req, res) => {
-    // Prevent browser from caching old index.html bundles and eliminate white screen on normal reload
+    // Prevent browser from caching old index.html bundles while allowing in-flight asset downloads
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
-    res.setHeader('Clear-Site-Data', '"cache"');
     const distIndex = path.join(__dirname, 'dist', 'index.html');
     if (fs.existsSync(distIndex)) {
       return res.sendFile(distIndex);
