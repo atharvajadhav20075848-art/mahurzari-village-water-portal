@@ -44,36 +44,31 @@ app.use('/assets', express.static(path.join(__dirname, 'dist', 'assets')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.set('trust proxy', true);
 
-// Direct Presentation Deck & PPTX handler
+// Direct Presentation Deck & PPTX handler (In-Memory guaranteed delivery)
 app.use((req, res, next) => {
-  if (req.url.toLowerCase().includes('presentation') || req.path.toLowerCase().includes('presentation')) {
-    const candidates = [
-      path.join(__dirname, 'dist', 'presentation.html'),
-      path.join(process.cwd(), 'dist', 'presentation.html'),
-      path.join(__dirname, 'public', 'presentation.html'),
-      path.join(process.cwd(), 'public', 'presentation.html'),
-      path.join(__dirname, 'presentation.html'),
-      path.join(process.cwd(), 'presentation.html')
-    ];
-    for (const p of candidates) {
-      if (fs.existsSync(p)) {
-        return res.sendFile(p);
-      }
+  const url = req.url.toLowerCase();
+  const pathname = (req.path || '').toLowerCase();
+  if (url.includes('presentation') || pathname.includes('presentation')) {
+    try {
+      const presentationHtml = require('./api/presentationHtml');
+      res.setHeader('Content-Type', 'text/html; charset=utf-8');
+      return res.status(200).send(presentationHtml);
+    } catch (e) {
+      console.error('Presentation render error:', e);
     }
   }
-  if (req.url.toLowerCase().includes('.pptx')) {
-    const candidates = [
-      path.join(__dirname, 'Mahurzari_Water_Portal_Presentation.pptx'),
-      path.join(process.cwd(), 'Mahurzari_Water_Portal_Presentation.pptx'),
-      path.join(__dirname, 'dist', 'Mahurzari_Water_Portal_Presentation.pptx'),
-      path.join(process.cwd(), 'dist', 'Mahurzari_Water_Portal_Presentation.pptx'),
-      path.join(__dirname, 'public', 'Mahurzari_Water_Portal_Presentation.pptx'),
-      path.join(process.cwd(), 'public', 'Mahurzari_Water_Portal_Presentation.pptx')
-    ];
-    for (const p of candidates) {
-      if (fs.existsSync(p)) {
-        return res.download(p, 'Mahurzari_Water_Portal_Presentation.pptx');
-      }
+  if (url.includes('.pptx') || pathname.includes('.pptx')) {
+    try {
+      const pptxB64 = require('./api/pptxBase64');
+      const buf = Buffer.from(pptxB64, 'base64');
+      res.writeHead(200, {
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        'Content-Length': buf.length,
+        'Content-Disposition': 'attachment; filename="Mahurzari_Water_Portal_Presentation.pptx"'
+      });
+      return res.end(buf);
+    } catch (e) {
+      console.error('PPTX render error:', e);
     }
   }
   next();
