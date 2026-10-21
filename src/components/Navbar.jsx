@@ -7,7 +7,9 @@ export default function Navbar({
   setActiveTab, 
   onLogout, 
   language = 'en', 
-  setLanguage 
+  setLanguage,
+  notificationCount = 0,
+  onOpenNotifications
 }) {
   const t = (key) => getTranslation(language, key);
 
@@ -138,6 +140,20 @@ export default function Navbar({
             title="PPT Presentation"
           >
             <span>📽️ PPT</span>
+          </button>
+
+          {/* Notification Bell with Badge */}
+          <button
+            onClick={onOpenNotifications}
+            className="relative p-1.5 sm:p-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-primary transition-all active:scale-95 flex items-center justify-center cursor-pointer border border-outline-variant/40"
+            title="सूचना केंद्र (Notifications)"
+          >
+            <span className="material-symbols-outlined text-[19px] sm:text-[21px]">notifications</span>
+            {notificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-error text-white font-headline font-black text-[9px] sm:text-[10px] w-4 h-4 rounded-full flex items-center justify-center ring-2 ring-surface animate-pulse">
+                {notificationCount > 9 ? '9+' : notificationCount}
+              </span>
+            )}
           </button>
 
           {/* Language Switcher */}

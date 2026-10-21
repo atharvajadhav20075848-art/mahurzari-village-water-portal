@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from './components/Navbar';
 import BottomNav from './components/BottomNav';
 import ApkBanner from './components/ApkBanner';
@@ -9,6 +9,13 @@ import TasksTab from './components/TasksTab';
 import AdminTab from './components/AdminTab';
 import SupportTab from './components/SupportTab';
 import PresentationTab from './components/PresentationTab';
+import NotificationModal from './components/NotificationModal';
+import { 
+  playNotificationChime, 
+  sendBrowserNotification, 
+  requestPushPermission 
+} from './utils/notificationSound';
+import { playEmergencySirenSound, stopEmergencySirenSound } from './utils/sirenAudio';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
@@ -28,6 +35,14 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('home');
   const [language, setLanguage] = useState(() => localStorage.getItem('gram_lang') || 'en');
   const [emergencyAlert, setEmergencyAlert] = useState(null);
+
+  // Notification Center State
+  const [notifications, setNotifications] = useState([]);
+  const [isNotifModalOpen, setIsNotifModalOpen] = useState(false);
+  const [unreadNotifsCount, setUnreadNotifsCount] = useState(0);
+  const lastSeenAlertIdRef = useRef(null);
+  const knownNotifIdsRef = useRef(new Set());
+  const isInitialNotifFetchRef = useRef(true);
 
   const handleLanguageChange = (newLang) => {
     setLanguage(newLang);
@@ -89,7 +104,85 @@ export default function App() {
     }
   }, [currentUser]);
 
-  // 3. Browser History Sync for 0ms Tab Switching
+  // 3. Live Emergency Alert & Village Notification Engine
+  useEffect(() => {
+    // Request push notification permission after first 2 seconds
+    const permTimer = setTimeout(() => {
+      requestPushPermission().catch(() => {});
+    }, 2000);
+
+    const pollAlerts = async () => {
+      try {
+        // Poll emergency alert
+        const resAlert = await fetch('/api/emergency/alert');
+        if (resAlert.ok) {
+          const data = await resAlert.json();
+          if (data && data.active && data.alert) {
+            setEmergencyAlert(data.alert);
+            if (lastSeenAlertIdRef.current !== data.alert.id) {
+              lastSeenAlertIdRef.current = data.alert.id;
+              playEmergencySirenSound();
+              sendBrowserNotification('🚨 ' + data.alert.title, {
+                body: data.alert.message,
+                isEmergency: true
+              });
+            }
+          } else {
+            setEmergencyAlert(null);
+            stopEmergencySirenSound();
+          }
+        }
+
+        // Poll village notifications
+        const resNotifs = await fetch('/api/notifications');
+        if (resNotifs.ok) {
+          const data = await resNotifs.json();
+          if (data && Array.isArray(data.notifications)) {
+            setNotifications(data.notifications);
+
+            let newItemsCount = 0;
+            data.notifications.forEach(item => {
+              const id = item.id || item._id;
+              if (!knownNotifIdsRef.current.has(id)) {
+                knownNotifIdsRef.current.add(id);
+                if (!isInitialNotifFetchRef.current) {
+                  newItemsCount++;
+                  sendBrowserNotification(item.title, {
+                    body: item.message
+                  });
+                }
+              }
+            });
+
+            if (!isInitialNotifFetchRef.current && newItemsCount > 0) {
+              playNotificationChime();
+              setUnreadNotifsCount(prev => prev + newItemsCount);
+            }
+            isInitialNotifFetchRef.current = false;
+          }
+        }
+      } catch (err) {
+        // Fail quietly
+      }
+    };
+
+    pollAlerts();
+    const interval = setInterval(pollAlerts, 5000); // Poll every 5s for real-time responsiveness
+    return () => {
+      clearTimeout(permTimer);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const handleDismissAlert = async () => {
+    setEmergencyAlert(null);
+    stopEmergencySirenSound();
+    try {
+      await fetch('/api/emergency/dismiss', { method: 'POST' });
+    } catch (_) {}
+  };
+
+  // 4. Browser History Sync for 0ms Tab Switching
   const handleTabSwitch = (tab) => {
     setActiveTab(tab);
     try {
@@ -180,6 +273,11 @@ export default function App() {
         onLogout={handleLogout}
         language={language}
         setLanguage={handleLanguageChange}
+        notificationCount={unreadNotifsCount}
+        onOpenNotifications={() => {
+          setIsNotifModalOpen(true);
+          setUnreadNotifsCount(0);
+        }}
       />
 
       {/* Main Content Area */}
@@ -197,8 +295,9 @@ export default function App() {
               </div>
             </div>
             <button
-              onClick={() => setEmergencyAlert(null)}
+              onClick={handleDismissAlert}
               className="p-1 hover:bg-white/20 rounded-full"
+              title="Dismiss Alert"
             >
               <span className="material-symbols-outlined text-sm">close</span>
             </button>
@@ -254,6 +353,14 @@ export default function App() {
           )}
         </div>
       </main>
+
+      {/* Notifications Drawer Modal */}
+      <NotificationModal
+        isOpen={isNotifModalOpen}
+        onClose={() => setIsNotifModalOpen(false)}
+        notifications={notifications}
+        onClearAll={() => setNotifications([])}
+      />
 
       {/* Mobile Native Bottom Navigation Bar */}
       <BottomNav

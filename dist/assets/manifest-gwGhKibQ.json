@@ -1,7 +1,9 @@
 {
-  "name": "Gram Jal Portal - Village Water Management",
+  "name": "Gram Jal - Mahurzari Village Water Portal",
   "short_name": "Gram Jal",
   "start_url": "/",
+  "scope": "/",
+  "id": "mahurzari-village-water-portal",
   "display": "standalone",
   "background_color": "#fff8f5",
   "theme_color": "#003b5a",

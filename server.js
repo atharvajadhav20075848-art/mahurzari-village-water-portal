@@ -1325,6 +1325,110 @@ app.get('/api/download/apk', (req, res) => {
   res.status(404).send('APK file not available on server.');
 });
 
+// ── In-Memory & MongoDB Notification & Emergency Alert Engine ────────
+let activeEmergencyAlert = null;
+let defaultNotifications = [
+  {
+    id: 'notif_1',
+    title: 'माहूरझरी पाणी पुरवठा वेळ',
+    message: 'आज सकाळचा पाणी पुरवठा सुरळीत सुरू आहे (सकाळी ६:०० ते ८:३०). कृपया पाण्याची साठवणूक करावी.',
+    type: 'supply',
+    author: 'ग्रामपंचायत पाणी विभाग',
+    createdAt: new Date(Date.now() - 30 * 60 * 1000)
+  },
+  {
+    id: 'notif_2',
+    title: 'पिण्याच्या पाण्याची शुद्धता तपासणी',
+    message: 'आरोग्य विभागाकडून पाण्याची तपासणी पूर्ण झाली आहे. शुद्धता ९९.४% (WHO मानकांनुसार उत्तम).',
+    type: 'general',
+    author: 'आरोग्य व स्वच्छता समिती',
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
+  },
+  {
+    id: 'notif_3',
+    title: 'वॉर्ड क्र. २ पाईप दुरुस्ती',
+    message: 'वॉर्ड क्र. २ मधील पाईप लिकेज दुरुस्तीचे काम तांत्रिक टीमने सुरू केले आहे.',
+    type: 'issue',
+    author: 'प्लंबर टीम',
+    createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000)
+  }
+];
+
+// GET active emergency alert
+app.get('/api/emergency/alert', (req, res) => {
+  res.json({
+    active: !!activeEmergencyAlert,
+    alert: activeEmergencyAlert
+  });
+});
+
+// Trigger emergency siren alert (Sarpanch / Admin)
+app.post('/api/emergency/siren', (req, res) => {
+  const { title, message, senderName, senderRole } = req.body;
+  if (!title) {
+    return res.status(400).json({ error: 'Title is required for emergency alert' });
+  }
+
+  activeEmergencyAlert = {
+    id: 'alert_' + Date.now(),
+    title: title.trim(),
+    message: message ? message.trim() : 'Urgent water notice for all villagers',
+    senderName: senderName || 'Sarpanch Office',
+    senderRole: senderRole || 'Sarpanch',
+    timestamp: new Date()
+  };
+
+  // Add to top of notifications list as well
+  defaultNotifications.unshift({
+    id: 'notif_' + Date.now(),
+    title: '🚨 ' + activeEmergencyAlert.title,
+    message: activeEmergencyAlert.message,
+    type: 'emergency',
+    author: activeEmergencyAlert.senderName,
+    createdAt: new Date()
+  });
+
+  res.json({ success: true, alert: activeEmergencyAlert });
+});
+
+// Dismiss emergency siren alert
+app.post(['/api/emergency/dismiss', '/api/emergency/clear'], (req, res) => {
+  activeEmergencyAlert = null;
+  res.json({ success: true, message: 'Emergency alert cleared' });
+});
+
+// GET village notifications list
+app.get('/api/notifications', (req, res) => {
+  res.json({
+    success: true,
+    notifications: defaultNotifications.slice(0, 20)
+  });
+});
+
+// POST new notification (Sarpanch / Admin broadcast)
+app.post('/api/notifications', (req, res) => {
+  const { title, message, type, author } = req.body;
+  if (!title || !message) {
+    return res.status(400).json({ error: 'Title and message required' });
+  }
+
+  const newNotif = {
+    id: 'notif_' + Date.now(),
+    title: title.trim(),
+    message: message.trim(),
+    type: type || 'general',
+    author: author || req.session?.user?.name || 'ग्रामपंचायत कार्यालय',
+    createdAt: new Date()
+  };
+
+  defaultNotifications.unshift(newNotif);
+  if (defaultNotifications.length > 50) {
+    defaultNotifications = defaultNotifications.slice(0, 50);
+  }
+
+  res.json({ success: true, notification: newNotif });
+});
+
 app.post('/api/issues', uploadSafe('photo'), async (req, res) => {
   const { title, type, description, location, gps } = req.body;
   

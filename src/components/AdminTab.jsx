@@ -281,6 +281,14 @@ export default function AdminTab({ currentUser, language = 'en' }) {
     }
   };
 
+  const handleDisarmSiren = async () => {
+    stopEmergencySirenSound();
+    try {
+      await fetch('/api/emergency/dismiss', { method: 'POST' });
+      alert("✅ Emergency Siren Disarmed & Cleared on All Village Phones.");
+    } catch (_) {}
+  };
+
   const toggleSoundTest = () => {
     if (isPlayingTest) {
       stopEmergencySirenSound();
@@ -611,14 +619,24 @@ export default function AdminTab({ currentUser, language = 'en' }) {
               onChange={(e) => setAlertMsg(e.target.value)}
               className="md:col-span-5 p-3 bg-white text-sm border-2 border-outline-variant rounded-xl font-body focus:border-error focus:outline-none"
             />
-            <button
-              onClick={triggerBlastSiren}
-              disabled={isBlasting}
-              className="md:col-span-3 py-3 px-4 bg-error text-white font-headline font-bold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-error/30 hover:bg-red-700 active:scale-95 transition-all cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-lg animate-pulse">volume_up</span>
-              {isBlasting ? t('blasting') : t('blast_siren')}
-            </button>
+            <div className="md:col-span-3 flex gap-2">
+              <button
+                onClick={triggerBlastSiren}
+                disabled={isBlasting}
+                className="flex-1 py-3 px-3 bg-error text-white font-headline font-bold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-1.5 shadow-lg shadow-error/30 hover:bg-red-700 active:scale-95 transition-all cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-lg animate-pulse">volume_up</span>
+                {isBlasting ? t('blasting') : t('blast_siren')}
+              </button>
+              <button
+                onClick={handleDisarmSiren}
+                className="py-3 px-3 bg-slate-800 hover:bg-slate-900 text-white font-headline font-bold text-xs uppercase tracking-wider rounded-xl flex items-center justify-center gap-1 transition-all cursor-pointer shadow-md"
+                title="Stop & Clear Siren on All Village Phones"
+              >
+                <span className="material-symbols-outlined text-base">notifications_off</span>
+                <span>बंद करा</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

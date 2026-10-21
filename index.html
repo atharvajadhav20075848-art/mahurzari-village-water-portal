@@ -23,7 +23,21 @@
         }).catch(function() {});
       }
     } catch (e) {}
+
+    // Automatic Canonical Domain Redirect (Fixes phone opening stale/old Vercel URLs)
+    (function() {
+      try {
+        var currentHost = window.location.hostname;
+        var canonicalHost = 'mahurzari-village-water-portal.vercel.app';
+        if (currentHost && currentHost.indexOf('localhost') === -1 && currentHost.indexOf('127.0.0.1') === -1) {
+          if (currentHost !== canonicalHost && currentHost.indexOf('vercel.app') !== -1) {
+            window.location.replace('https://' + canonicalHost + window.location.pathname + window.location.search);
+          }
+        }
+      } catch (e) {}
+    })();
   </script>
+  <link rel="canonical" href="https://mahurzari-village-water-portal.vercel.app/">
 
   <!-- Fonts & Icons -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
