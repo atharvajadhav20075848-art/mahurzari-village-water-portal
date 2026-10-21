@@ -145,11 +145,11 @@ function extractUserFromRequest(req) {
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "547185696384-nfog7eetv58j1vh6c75u42jd88gcqsi2.apps.googleusercontent.com";
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID);
 
-// ── Database Setup (MongoDB with Instant Fallback & Zero Buffering) ───
+// ── Database Setup (MongoDB with Serverless Connection Caching) ───
 const MONGO_URI = process.env.MONGO_URI || "mongodb+srv://atharvajadhav20075848_db_user:T6Xj3t4KOCtpfbXT@cluster0.hrxwdsn.mongodb.net/?appName=Cluster0";
 
-// Disable command buffering so missing or slow DB connections never hang HTTP requests
-mongoose.set('bufferCommands', false);
+// Enable command buffering so queries wait safely for MongoDB connection in serverless lambdas
+mongoose.set('bufferCommands', true);
 
 // In-memory fallback user store ensures instant login even if DB is cold or waking up
 const defaultSeedUsers = [
@@ -159,33 +159,39 @@ const defaultSeedUsers = [
 ];
 const memoryUsers = [...defaultSeedUsers];
 
-let isConnecting = false;
+let cachedDbPromise = null;
 async function connectToDatabase() {
-  if (mongoose.connection.readyState === 1) return mongoose.connection;
-  if (isConnecting) return null;
-  try {
-    isConnecting = true;
-    await mongoose.connect(MONGO_URI, {
-      serverSelectionTimeoutMS: 3000,
-      socketTimeoutMS: 15000,
-    });
-    console.log('Connected to MongoDB Live Database!');
-    await seedDefaultUsers().catch(() => {});
+  if (mongoose.connection.readyState === 1) {
     return mongoose.connection;
-  } catch (err) {
-    console.warn('MongoDB connection note (using resilient fallback):', err.message);
-    return null;
-  } finally {
-    isConnecting = false;
   }
+  if (!cachedDbPromise) {
+    cachedDbPromise = mongoose.connect(MONGO_URI, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 20000,
+    }).then(async (m) => {
+      console.log('Connected to MongoDB Live Database!');
+      await seedDefaultUsers().catch(() => {});
+      return m;
+    }).catch((err) => {
+      cachedDbPromise = null;
+      console.warn('MongoDB connection note (using resilient fallback):', err.message);
+      return null;
+    });
+  }
+  return cachedDbPromise;
 }
+
 if (MONGO_URI) {
   connectToDatabase().catch(() => {});
 }
 
-app.use((req, res, next) => {
-  if (MONGO_URI && mongoose.connection.readyState === 0 && !isConnecting) {
-    connectToDatabase().catch(() => {});
+app.use(async (req, res, next) => {
+  if (MONGO_URI && mongoose.connection.readyState !== 1) {
+    try {
+      await connectToDatabase();
+    } catch (e) {
+      console.warn('DB connect middleware error:', e.message);
+    }
   }
   
   // Authenticate user via cryptographic token or session
@@ -1149,12 +1155,16 @@ app.delete('/api/admin/sessions', requireAuth(['Admin']), async (req, res) => {
 // ── Issues API (Strict Rolling Queue: Max 5 Pending & Max 5 Resolved) ──
 app.get('/api/issues', async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      await connectToDatabase();
+    }
+
     // 1. Prune pending issues to maximum 5 latest
     const pending = await Issue.find({ status: { $ne: 'Resolved' } }).sort({ createdAt: -1 });
     if (pending.length > 5) {
       const pendingToDelete = pending.slice(5);
       for (const item of pendingToDelete) {
-        await Issue.findOneAndDelete({ id: item.id });
+        await Issue.findOneAndDelete({ id: item.id }).catch(() => {});
       }
     }
 
@@ -1163,32 +1173,36 @@ app.get('/api/issues', async (req, res) => {
     if (resolved.length > 5) {
       const resolvedToDelete = resolved.slice(5);
       for (const item of resolvedToDelete) {
-        await Issue.findOneAndDelete({ id: item.id });
+        await Issue.findOneAndDelete({ id: item.id }).catch(() => {});
       }
     }
 
     const issues = await Issue.find({}, { _id: 0, __v: 0 }).sort({ createdAt: -1 });
     res.json(issues);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Get issues error:", err);
+    res.json([]);
   }
 });
 
 // Live Map Data (Only REAL Online Users in the last 15 minutes)
 app.get('/api/live-map', async (req, res) => {
   try {
+    if (mongoose.connection.readyState !== 1) {
+      await connectToDatabase();
+    }
     const activeWindow = new Date(Date.now() - 15 * 60 * 1000); // Last 15 minutes
 
     // Purge old stale sessions from database
-    await ActiveSession.deleteMany({ updatedAt: { $lt: activeWindow } });
+    await ActiveSession.deleteMany({ updatedAt: { $lt: activeWindow } }).catch(() => {});
 
-    const totalUsers = await User.countDocuments();
-    const activeSessionsCount = await ActiveSession.countDocuments({ updatedAt: { $gte: activeWindow } });
-    const activeReports = await Issue.countDocuments({ status: { $ne: 'Resolved' } });
-    const resolvedReports = await Issue.countDocuments({ status: 'Resolved' });
+    const totalUsers = await User.countDocuments().catch(() => 0);
+    const activeSessionsCount = await ActiveSession.countDocuments({ updatedAt: { $gte: activeWindow } }).catch(() => 0);
+    const activeReports = await Issue.countDocuments({ status: { $ne: 'Resolved' } }).catch(() => 0);
+    const resolvedReports = await Issue.countDocuments({ status: 'Resolved' }).catch(() => 0);
 
-    const liveUsers = await ActiveSession.find({ updatedAt: { $gte: activeWindow } }, { _id: 0, __v: 0 }).sort({ updatedAt: -1 }).limit(50);
-    const issues = await Issue.find({}, { _id: 0, __v: 0 }).sort({ createdAt: -1 }).limit(100);
+    const liveUsers = await ActiveSession.find({ updatedAt: { $gte: activeWindow } }, { _id: 0, __v: 0 }).sort({ updatedAt: -1 }).limit(50).catch(() => []);
+    const issues = await Issue.find({}, { _id: 0, __v: 0 }).sort({ createdAt: -1 }).limit(100).catch(() => []);
 
     res.json({
       metrics: {
@@ -1201,7 +1215,12 @@ app.get('/api/live-map', async (req, res) => {
       issues
     });
   } catch (e) {
-    res.status(500).json({ error: e.message });
+    console.error("Live-map error:", e);
+    res.json({
+      metrics: { totalUsers: 0, liveNow: 0, activeReports: 0, resolvedReports: 0 },
+      liveUsers: [],
+      issues: []
+    });
   }
 });
 
