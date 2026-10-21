@@ -85,6 +85,10 @@
       "dest": "/public/sw.js"
     },
     {
+      "src": "/(api/download/apk|village-water-app-debug.apk)",
+      "dest": "/public/village-water-app-debug.apk"
+    },
+    {
       "src": "/(.*)",
       "dest": "/api/index.js"
     }
