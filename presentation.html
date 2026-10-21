@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="mr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ग्राम जल - माहूरझरी डिजिटल पाणी पोर्टल सादरीकरण (Gram Jal PPT)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;600;700;800&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --card-border: #334155;
+      --primary: #0284c7;
+      --accent: #38bdf8;
+      --emerald: #10b981;
+      --amber: #f59e0b;
+      --rose: #f43f5e;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Mukta', 'Outfit', sans-serif;
+      background: var(--bg);
+      color: var(--text-main);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      display: flex;
+      flex-direction: column;
+      user-select: none;
+    }
+
+    /* Top Controls Bar */
+    .top-bar {
+      height: 52px;
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--card-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    .brand span {
+      background: linear-gradient(135deg, #38bdf8, #818cf8);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-main);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+
+    .btn:hover {
+      background: #334155;
+      border-color: var(--accent);
+      transform: translateY(-1px);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border: none;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #0369a1, #1d4ed8);
+    }
+
+    .slide-counter {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: rgba(2, 132, 199, 0.15);
+      padding: 4px 12px;
+      border-radius: 20px;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+    }
+
+    /* Presentation Viewport */
+    .viewport {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      position: relative;
+    }
+
+    .slide {
+      display: none;
+      width: 100%;
+      max-width: 1300px;
+      aspect-ratio: 16 / 9;
+      background: var(--card-bg);
+      border-radius: 16px;
+      border: 1px solid var(--card-border);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+      padding: 36px 44px;
+      overflow-y: auto;
+      position: relative;
+      animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .slide.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.985); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    /* Slide Components */
+    .slide-header {
+      margin-bottom: 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      padding-bottom: 14px;
+    }
+
+    .slide-badge {
+      display: inline-block;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--accent);
+      background: rgba(56, 189, 248, 0.12);
+      padding: 3px 10px;
+      border-radius: 6px;
+      margin-bottom: 6px;
+    }
+
+    .slide-title {
+      font-size: 1.85rem;
+      font-weight: 800;
+      color: var(--text-main);
+      line-height: 1.25;
+    }
+
+    .slide-subtitle {
+      font-size: 1.05rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Slide Content Layouts */
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 28px;
+      flex: 1;
+      align-items: center;
+    }
+
+    .image-preview-container {
+      background: #020617;
+      border-radius: 12px;
+      border: 2px solid var(--card-border);
+      overflow: hidden;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      max-height: 480px;
+    }
+
+    .image-preview-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .info-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .info-card {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.07);
+      border-left: 4px solid var(--accent);
+      border-radius: 10px;
+      padding: 14px 18px;
+    }
+
+    .info-card.emerald { border-left-color: var(--emerald); }
+    .info-card.amber { border-left-color: var(--amber); }
+    .info-card.rose { border-left-color: var(--rose); }
+
+    .info-card h4 {
+      font-size: 1.1rem;
+      color: var(--text-main);
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .info-card p {
+      font-size: 0.95rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+      line-height: 1.45;
+    }
+
+    /* Title Slide Specific */
+    .title-slide-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      flex: 1;
+      padding: 20px 0;
+    }
+
+    .hero-badge {
+      background: linear-gradient(135deg, rgba(2, 132, 199, 0.2), rgba(16, 185, 129, 0.2));
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      padding: 6px 18px;
+      border-radius: 30px;
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .hero-title {
+      font-size: 2.8rem;
+      font-weight: 800;
+      line-height: 1.2;
+      background: linear-gradient(135deg, #ffffff, #cbd5e1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 12px;
+    }
+
+    .hero-subtitle {
+      font-size: 1.35rem;
+      color: var(--accent);
+      margin-bottom: 30px;
+      max-width: 800px;
+    }
+
+    .roles-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      width: 100%;
+      margin-top: 10px;
+      text-align: left;
+    }
+
+    /* Comparison Table */
+    .comp-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+
+    .comp-table th {
+      background: #0284c7;
+      color: white;
+      text-align: left;
+      padding: 12px 16px;
+      font-size: 1.05rem;
+      font-weight: 700;
+    }
+
+    .comp-table th:first-child { border-top-left-radius: 8px; }
+    .comp-table th:last-child { border-top-right-radius: 8px; }
+
+    .comp-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      font-size: 0.95rem;
+      vertical-align: top;
+      background: rgba(15, 23, 42, 0.4);
+    }
+
+    .comp-table tr:nth-child(even) td {
+      background: rgba(15, 23, 42, 0.7);
+    }
+
+    .comp-table .bad {
+      color: #f87171;
+    }
+
+    .comp-table .good {
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    /* Bottom Nav Bar */
+    .bottom-nav {
+      position: absolute;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--card-border);
+      padding: 8px 16px;
+      border-radius: 30px;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+      z-index: 50;
+    }
+
+    .nav-arrow {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: white;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .nav-arrow:hover {
+      background: var(--primary);
+      transform: scale(1.1);
+    }
+
+    .dot-indicators {
+      display: flex;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #475569;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .dot.active {
+      background: var(--accent);
+      width: 24px;
+      border-radius: 10px;
+    }
+
+    /* Print styles */
+    @media print {
+      body {
+        overflow: visible;
+        height: auto;
+        background: white;
+        color: black;
+      }
+      .top-bar, .bottom-nav { display: none !important; }
+      .viewport { padding: 0; display: block; }
+      .slide {
+        display: block !important;
+        page-break-after: always;
+        box-shadow: none;
+        border: 1px solid #ccc;
+        margin-bottom: 30px;
+        background: white;
+        color: black;
+      }
+      .slide-title, .hero-title { color: #0f172a !important; -webkit-text-fill-color: initial !important; }
+      .info-card { background: #f8fafc; color: #334155; border-color: #cbd5e1; }
+      .info-card h4 { color: #0f172a; }
+      .info-card p { color: #475569; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Bar -->
+  <div class="top-bar">
+    <div class="brand">
+      💧 <span>ग्राम जल : माहूरझरी डिजिटल पोर्टल</span>
+    </div>
+    <div class="controls">
+      <span class="slide-counter" id="slideIndicator">Slide 1 / 12</span>
+      <button class="btn" onclick="toggleFullscreen()" title="Projector Fullscreen (Key: F)">⛶ Fullscreen</button>
+      <button class="btn" onclick="window.print()" title="Print or Save as PDF">🖨️ Save PDF</button>
+      <a href="/Mahurzari_Water_Portal_Presentation.pptx" download class="btn btn-primary" title="Download PowerPoint PPTX">📥 Download PPTX</a>
+    </div>
+  </div>
+
+  <!-- Viewport -->
+  <div class="viewport">
+
+    <!-- SLIDE 1: Title -->
+    <div class="slide active" data-slide="1">
+      <div class="title-slide-wrapper">
+        <div class="hero-badge">🏛️ ग्रामपंचायत माहूरझरी - विशेष सादरीकरण</div>
+        <h1 class="hero-title">ग्राम जल : डिजिटल पाणी पुरवठा व तक्रार निवारण पोर्टल</h1>
+        <p class="hero-subtitle">Smart Village Drinking Water Supply & Real-Time Grievance Redressal System</p>
+        
+        <div class="roles-grid">
+          <div class="info-card">
+            <h4>👥 सर्व ग्रामस्थांसाठी</h4>
+            <p>घरबसल्या मोबाईलवरून पाण्याचे टाईमिंग, शुद्धता व १-क्लिक तक्रार नोंदणी.</p>
+          </div>
+          <div class="info-card emerald">
+            <h4>🔧 प्लंबर व कामगारांसाठी</h4>
+            <p>मोबाईलवर टास्क वाटप, नकाशावर अचूक लिकेज लोकेशन व दुरुस्तीचा फोटो पुरावा.</p>
+          </div>
+          <div class="info-card amber">
+            <h4>🏛️ सरपंच व प्रशासनासाठी</h4>
+            <p>२४x७ लाईव्ह डॅशबोर्ड, आपत्कालीन सायरन अलर्ट व पारदर्शक डिजिटल कारभार.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 2: Problem Statement -->
+    <div class="slide" data-slide="2">
+      <div class="slide-header">
+        <div class="slide-badge">समस्या व आव्हान</div>
+        <h2 class="slide-title">गावातील सध्याच्या पाणी समस्या व डिजिटल ॲपची गरज</h2>
+        <div class="slide-subtitle">पारंपरिक पद्धतीमधील अडचणी ज्यामुळे ग्रामस्थांना त्रास सहन करावा लागतो</div>
+      </div>
+      <div class="info-list">
+        <div class="info-card rose">
+          <h4>१. माहितीचा अभाव व वेळेचा गोंधळ</h4>
+          <p>सकाळी किंवा संध्याकाळी पाणी किती वाजता सुटणार, मोटर जळाली आहे का, किंवा पाणी कधी बंद होणार हे ग्रामस्थांना वेळेवर समजत नाही. यामुळे पाण्यासाठी लोकांची नाहक धावपळ होते.</p>
+        </div>
+        <div class="info-card rose">
+          <h4>२. पाईप लिकेज व लाखो लिटर पिण्याच्या पाण्याची नासाडी</h4>
+          <p>पाईप फुटल्यास किंवा व्हॉल्व्ह खराब झाल्यास हजारो लिटर शुद्ध पाणी रस्त्यावर वाहून जाते. तसेच गढूळ व घाण पाणी पाईपमध्ये जाऊन आजार पसरण्याची भीती असते.</p>
+        </div>
+        <div class="info-card amber">
+          <h4>३. तक्रार नोंदवण्यात उशीर व विसर</h4>
+          <p>नागरिकांना तक्रार देण्यासाठी प्रत्यक्ष ग्रामपंचायत कार्यालयात जावे लागते. सुट्टीच्या दिवशी किंवा रात्री तक्रार नोंदवणे अशक्य होते.</p>
+        </div>
+        <div class="info-card amber">
+          <h4>४. लिकेजची जागा शोधण्यात तासन्-तास वाया</h4>
+          <p>प्लंबर किंवा तांत्रिक कामगारांना समस्या नक्की कोणत्या गल्लीत किंवा कोणाच्या घरासमोर आहे हे शोधत गावात फिरावे लागते, ज्यामुळे दुरुस्तीला दिवस उलटतात.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 3: The Solution Highlights -->
+    <div class="slide" data-slide="3">
+      <div class="slide-header">
+        <div class="slide-badge">डिजिटल क्रांती</div>
+        <h2 class="slide-title">ग्राम जल पोर्टल : संपूर्ण डिजिटल व पारदर्शक उपाय</h2>
+        <div class="slide-subtitle">माहूरझरी गावासाठी खास बनवलेली आधुनिक व सोपी वेब प्रणाली</div>
+      </div>
+      <div class="info-list">
+        <div class="info-card emerald">
+          <h4>📱 ॲप डाऊनलोड न करता थेट क्रोम ब्राऊझरवरून सुरू</h4>
+          <p>Play Store वरून ॲप डाऊनलोड करण्याची गरज नाही. साध्या ५ हजार रुपयांच्या फोनवरही गुगल क्रोममध्ये लिंक उघडताच १ सेकंदात लोड होते.</p>
+        </div>
+        <div class="info-card">
+          <h4>⚡ १-क्लिक गुगल लॉगिन (Google Sign-In)</h4>
+          <p>कोणताही कठीण पासवर्ड लक्षात ठेवण्याची गरज नाही. प्रत्येकाच्या फोनमध्ये असलेल्या जीमेल आयडीने थेट सुरक्षित लॉगिन होते.</p>
+        </div>
+        <div class="info-card">
+          <h4>📍 स्वयंचलित अचूक GPS लोकेशन</h4>
+          <p>तक्रार नोंदवताना पत्ता टाईप करण्याची गरज नाही. मोबाईलचे अचूक GPS लोकेशन आपोआप सिस्टीममध्ये सेव्ह होते.</p>
+        </div>
+        <div class="info-card amber">
+          <h4>🔒 ५ मिनिटांचे स्पॅम नियंत्रण (Anti-Spam)</h4>
+          <p>एका फोनवरून ५ मिनिटात एकच खरी तक्रार नोंदवता येते. यामुळे खोट्या तक्रारींना आळा बसतो व सिस्टीम जलद काम करते.</p>
+        </div>
+        <div class="info-card emerald">
+          <h4>🏆 ५-तक्रार FIFO स्मार्ट सिस्टीम</h4>
+          <p>मुख्य पानावर फक्त ५ ताजी कामे दिसतात आणि सॉल्व्ह झालेली जुनी कामे आर्काइव्हमध्ये जातात. ज्यामुळे फोन कधीही हँग होत नाही.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 4: Screen 1 - Login -->
+    <div class="slide" data-slide="4">
+      <div class="slide-header">
+        <div class="slide-badge">ॲप स्क्रीन १</div>
+        <h2 class="slide-title">सोपे व सुरक्षित गुगल लॉगिन (Google Sign-In)</h2>
+        <div class="slide-subtitle">गावातील प्रत्येक नागरिकासाठी झटपट प्रवेश व्यवस्था</div>
+      </div>
+      <div class="content-grid">
+        <div class="image-preview-container">
+          <img src="/presentation_assets/01_login_screen.png" alt="Login Screen">
+        </div>
+        <div class="info-list">
+          <div class="info-card">
+            <h4>✔ सुरक्षित गुगल ऑथेंटिकेशन</h4>
+            <p>फक्त "Sign in with Google" दाबताच वापरकर्त्याचे नाव व ईमेल सुरक्षितपणे जोडले जातात.</p>
+          </div>
+          <div class="info-card emerald">
+            <h4>✔ Persistent Login (कायम सेव्ह)</h4>
+            <p>एकदा लॉगिन केल्यावर ३० दिवस लॉगिन सेव्ह राहते. वारंवार आयडी पासवर्ड टाकण्याचा त्रास नाही.</p>
+          </div>
+          <div class="info-card">
+            <h4>✔ थेट पद ओळख (Role Detection)</h4>
+            <p>सरपंचांनी दिलेला रोल (प्लंबर, ॲडमिन किंवा नागरिक) गुगल लॉगिन होताच आपोआप लागू होतो.</p>
+          </div>
+          <div class="info-card amber">
+            <h4>✔ डेमो मोड्स</h4>
+            <p>तपासणीसाठी थेट Demo Sarpanch, Demo Plumber व Citizen मोड्स देखील दिलेले आहेत.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 5: Screen 2 - Home Dashboard -->
+    <div class="slide" data-slide="5">
+      <div class="slide-header">
+        <div class="slide-badge">ॲप स्क्रीन २</div>
+        <h2 class="slide-title">मुख्य माहिती केंद्र (Home Dashboard)</h2>
+        <div class="slide-subtitle">गावातील पाणी पुरवठा व गुणवत्तेची ताजी माहिती एकाच नजरेत</div>
+      </div>
+      <div class="content-grid">
+        <div class="image-preview-container">
+          <img src="/presentation_assets/02_home_dashboard.png" alt="Home Dashboard">
+        </div>
+        <div class="info-list">
+          <div class="info-card">
+            <h4>✔ पाणी पुरवठा वेळा (Supply Schedule)</h4>
+            <p>सकाळी व संध्याकाळी किती वाजता पाणी येणार व एकूण किती लिटर पाणी सोडले गेले याची अचूक माहिती.</p>
+          </div>
+          <div class="info-card emerald">
+            <h4>✔ पाण्याची गुणवत्ता (WHO Standard)</h4>
+            <p>पाणी पिण्यायोग्य आहे की नाही, फिल्टरेशनची स्थिती व शुद्धता टक्केवारी थेट दिसते.</p>
+          </div>
+          <div class="info-card amber">
+            <h4>✔ जलद ॲक्शन बटणे</h4>
+            <p>समस्या नोंदवण्यासाठी समोरच मोठी ठळक बटणे दिली आहेत, जेणेकरून ज्येष्ठ नागरिकही सहज वापरू शकतील.</p>
+          </div>
+          <div class="info-card">
+            <h4>✔ ताज्या तक्रारींची स्थिती</h4>
+            <p>गावात नुकतीच नोंदवलेली कामे व ती सॉल्व्ह झाली की प्रलंबित आहेत हे सर्वांना पारदर्शक दिसते.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 6: Screen 3 - Report Issue -->
+    <div class="slide" data-slide="6">
+      <div class="slide-header">
+        <div class="slide-badge">ॲप स्क्रीन ३</div>
+        <h2 class="slide-title">१-क्लिक तक्रार नोंदणी (Report Issue Tab)</h2>
+        <div class="slide-subtitle">घरबसल्या फोटो व थेट अचूक GPS लोकेशनसह तक्रार दाखल करा</div>
+      </div>
+      <div class="content-grid">
+        <div class="image-preview-container">
+          <img src="/presentation_assets/03_report_tab.png" alt="Report Tab">
+        </div>
+        <div class="info-list">
+          <div class="info-card rose">
+            <h4>✔ समस्येचा प्रकार निवडा</h4>
+            <p>पाईप लिकेज (Pipe Leakage), दूषित पाणी (Dirty Water), कमी दाब (Low Pressure) किंवा मोटर बिघाड एका क्लिकवर सिलेक्ट करा.</p>
+          </div>
+          <div class="info-card emerald">
+            <h4>✔ अचूक GPS स्थान (Accurate Pinpoint)</h4>
+            <p>गावातील व्यक्ती कुठे उभी आहे त्याचे अचूक लॅटिट्यूड व लाँगिट्यूड लोकेशन सिस्टीम स्वतः कॅप्चर करते.</p>
+          </div>
+          <div class="info-card">
+            <h4>✔ थेट फोटो पुरावा</h4>
+            <p>मोबाईल कॅमेऱ्याने फुटलेल्या पाईपचा थेट फोटो काढून अपलोड करता येतो, ज्यामुळे कामाचे गांभीर्य समजते.</p>
+          </div>
+          <div class="info-card amber">
+            <h4>✔ ५ मिनिटांचे स्पॅम नियंत्रण</h4>
+            <p>एका फोनवरून ५ मिनिटात एकच तक्रार नोंदवली जाते, जेणेकरून खोडसाळ तक्रारी टळतात.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 7: Screen 4 - Live Map -->
+    <div class="slide" data-slide="7">
+      <div class="slide-header">
+        <div class="slide-badge">ॲप स्क्रीन ४</div>
+        <h2 class="slide-title">माहूरझरी गावाचा थेट डिजिटल नकाशा (Live Satellite Map)</h2>
+        <div class="slide-subtitle">पाईपलाईन जाळे, पाण्याच्या टाक्या व लिकेजचे थेट नकाशावर दर्शन</div>
+      </div>
+      <div class="content-grid">
+        <div class="image-preview-container">
+          <img src="/presentation_assets/04_map_tab.png" alt="Map Tab">
+        </div>
+        <div class="info-list">
+          <div class="info-card">
+            <h4>✔ गावाचा संपूर्ण भौगोलिक नकाशा</h4>
+            <p>माहूरझरी परिसरातील रस्ते, गल्ली, नळ पाईपलाईन व जलस्त्रोत नकाशावर स्पष्ट दिसतात.</p>
+          </div>
+          <div class="info-card rose">
+            <h4>✔ समस्येचे लाल व पिवळे पिन</h4>
+            <p>कुठे पाईप फुटला आहे त्याचा लाल मार्कर नकाशावर चमकतो, ज्यामुळे तातडीने लक्ष जाते.</p>
+          </div>
+          <div class="info-card emerald">
+            <h4>✔ प्लंबरसाठी थेट दिशादर्शन</h4>
+            <p>प्लंबर नकाशावर क्लिक करून थेट त्या जागेवर पोहोचू शकतात. कोणालाही फोन करून पत्ता विचारण्याची गरज नाही.</p>
+          </div>
+          <div class="info-card">
+            <h4>✔ झूम व नेव्हिगेशन सुविधा</h4>
+            <p>कोणत्या वॉर्डमध्ये किती समस्या आहेत ते एकाच नजरेत पाहता येते.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 8: Screen 5 - Tasks Tab -->
+    <div class="slide" data-slide="8">
+      <div class="slide-header">
+        <div class="slide-badge">ॲप स्क्रीन ५</div>
+        <h2 class="slide-title">प्लंबर व कामगारांचे टास्क व्यवस्थापन (Tasks & Repairs)</h2>
+        <div class="slide-subtitle">काम वाटप, दुरुस्ती सुरू करणे व काम पूर्णत्वाचा फोटो पुरावा</div>
+      </div>
+      <div class="content-grid">
+        <div class="image-preview-container">
+          <img src="/presentation_assets/05_tasks_tab.png" alt="Tasks Tab">
+        </div>
+        <div class="info-list">
+          <div class="info-card">
+            <h4>✔ थेट कामाचे वाटप</h4>
+            <p>तक्रार नोंद होताच ती थेट प्लंबर व तांत्रिक टीमच्या 'Tasks' यादीत सर्वात वर जोडली जाते.</p>
+          </div>
+          <div class="info-card amber">
+            <h4>✔ 'काम सुरू' (In Progress) स्टेटस</h4>
+            <p>प्लंबरने घटनास्थळी पोहोचून 'Start Repair' बटण दाबले की तक्रारदाराला काम सुरू झाल्याचा मेसेज मिळतो.</p>
+          </div>
+          <div class="info-card emerald">
+            <h4>✔ पूर्ण झाल्यावर फोटो पुरावा (Solved Proof)</h4>
+            <p>पाईप दुरुस्त केल्यावर प्लंबर दुरुस्तीचा फोटो अपलोड करतो, ज्यानंतरच काम 'पूर्ण' मानले जाते.</p>
+          </div>
+          <div class="info-card">
+            <h4>✔ कामाची डिजिटल नोंद</h4>
+            <p>कोणत्या प्लंबरने किती समस्या सोडवल्या याचा ग्रामपंचायतीकडे कायमस्वरूपी रेकॉर्ड राहतो.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 9: Screen 6 - Admin Tab -->
+    <div class="slide" data-slide="9">
+      <div class="slide-header">
+        <div class="slide-badge">ॲप स्क्रीन ६</div>
+        <h2 class="slide-title">सरपंच व ॲडमिन कार्यकारी नियंत्रण (Command Center)</h2>
+        <div class="slide-subtitle">ग्रामपंचायत स्तरावर संपूर्ण गावाचे नियंत्रण व अधिकारांचे वाटप</div>
+      </div>
+      <div class="content-grid">
+        <div class="image-preview-container">
+          <img src="/presentation_assets/06_admin_tab.png" alt="Admin Tab">
+        </div>
+        <div class="info-list">
+          <div class="info-card rose">
+            <h4>✔ आपत्कालीन सायरन व अलर्ट ब्रॉडकास्ट</h4>
+            <p>पाणी गढूळ आल्यास किंवा मोटर जळाल्यास सरपंच साहेब संपूर्ण गावाला एका क्लिकवर लाल सायरन अलर्ट पाठवू शकतात.</p>
+          </div>
+          <div class="info-card emerald">
+            <h4>✔ आगाऊ पद वाटप (Pre-Assign Role)</h4>
+            <p>सरपंच कोणत्याही कर्मचाऱ्याचा जीमेल आयडी टाकून त्याला प्लंबर किंवा ॲडमिन पद आधीच देऊ शकतात.</p>
+          </div>
+          <div class="info-card">
+            <h4>✔ कायमस्वरूपी सेव्ह (MongoDB Database)</h4>
+            <p>दिलेले पद क्लाऊड डेटाबेसमध्ये कायम सेव्ह राहते. युझरने कधीही गुगल लॉगिन केले तरी त्याचा रोल कायम राहतो.</p>
+          </div>
+          <div class="info-card amber">
+            <h4>✔ ५-तक्रार FIFO सुरक्षा</h4>
+            <p>सिस्टीमवर ओव्हरलोड न होता ॲप कायम सुपरफास्ट चालण्यासाठी आधुनिक FIFO बफर कार्यान्वित आहे.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 10: Comparison Table -->
+    <div class="slide" data-slide="10">
+      <div class="slide-header">
+        <div class="slide-badge">तौलनिक अभ्यास</div>
+        <h2 class="slide-title">जुनी पारंपरिक पद्धत विरुद्ध डिजिटल ग्राम जल पोर्टल</h2>
+        <div class="slide-subtitle">कशाप्रकारे हे पोर्टल गावाचा वेळ, पैसा आणि शुद्ध पिण्याचे पाणी वाचवते</div>
+      </div>
+      <table class="comp-table">
+        <thead>
+          <tr>
+            <th style="width: 25%;">मुद्दा / बाब</th>
+            <th style="width: 37.5%;">❌ जुनी पारंपरिक पद्धत</th>
+            <th style="width: 37.5%;">✔ डिजिटल ग्राम जल पोर्टल</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>तक्रार नोंदवणे</strong></td>
+            <td class="bad">ग्रामपंचायतीत जाऊन किंवा फोनवर सांगावे लागे; अनेकदा तक्रार नोंदवून घेतली जात नसे.</td>
+            <td class="good">मोबाईलवरून २४ तास कधीही १ सेकंदात थेट फोटो व अचूक GPS लोकेशनसह नोंद.</td>
+          </tr>
+          <tr>
+            <td><strong>लिकेजची जागा शोधणे</strong></td>
+            <td class="bad">प्लंबरला गल्ली-बोळात विचारत फिरावे लागे, कित्येक तास वाया जात.</td>
+            <td class="good">थेट सॅटेलाईट नकाशावर अचूक लोकेशन पिन पाहून प्लंबर ५ मिनिटात जागेवर पोहोचतो.</td>
+          </tr>
+          <tr>
+            <td><strong>पाण्याचा अपव्यय</strong></td>
+            <td class="bad">लिकेज दुरुस्त होण्यास १-२ दिवस लागत, हजारो लिटर पाणी वाया जात असे.</td>
+            <td class="good">त्वरित अलर्ट व टास्क वाटपामुळे काही तासांत दुरुस्ती शक्य, पाण्याची १००% बचत.</td>
+          </tr>
+          <tr>
+            <td><strong>कामाचा हिशोब व पुरावा</strong></td>
+            <td class="bad">कागदावर काही नोंद राहत नसे; काम झाले की नाही यात वाद होत असत.</td>
+            <td class="good">फोटो पुरावासह संपूर्ण डिजिटल नोंद; सरपंच व ग्रामस्थांना पारदर्शक माहिती.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- SLIDE 11: Rollout Plan -->
+    <div class="slide" data-slide="11">
+      <div class="slide-header">
+        <div class="slide-badge">अंमलबजावणी आराखडा</div>
+        <h2 class="slide-title">माहूरझरी गावात ॲपचे प्रकाशन व वापर सुरू करण्याची योजना</h2>
+        <div class="slide-subtitle">गावातील प्रत्येक घरात पोर्टलचा वापर कसा पोहोचवायचा?</div>
+      </div>
+      <div class="info-list">
+        <div class="info-card emerald">
+          <h4>टप्पा १ : आजच्या ग्रामसभेत प्रत्यक्ष प्रात्यक्षिक (Live Demo)</h4>
+          <p>उपस्थित सर्व प्रतिष्ठित नागरिक, सरपंच, उपसरपंच व सदस्यांसमोर थेट मोबाईलवरून १ तक्रार नोंदवून व नकाशावर पाहून दाखवणे.</p>
+        </div>
+        <div class="info-card">
+          <h4>टप्पा २ : व्हॉट्सॲप ग्रुप्सवर लिंक व चावडीवर QR कोड बोर्ड</h4>
+          <p>गावातील सर्व अधिकृत व्हॉट्सॲप ग्रुप्सवर पोर्टलची थेट लिंक पाठवणे व ग्रामपंचायत चावडीवर मोबाईलने स्कॅन करण्यासाठी QR कोड लावणे.</p>
+        </div>
+        <div class="info-card amber">
+          <h4>टप्पा ३ : वॉर्डनिहाय 'जलमित्र' स्वयंसेवक</h4>
+          <p>गावातील शिकलेल्या तरुणांची वॉर्डनिहाय निवड करणे, जेणेकरून ते मोबाईल न वापरू शकणाऱ्या ज्येष्ठ नागरिकांची तक्रार त्यांच्या वतीने नोंदवतील.</p>
+        </div>
+        <div class="info-card">
+          <h4>टप्पा ४ : प्लंबर व ऑपरेटर यांना विशेष प्रशिक्षण</h4>
+          <p>प्लंबर व ऑपरेटर यांना Tasks Tab मधून काम सुरू करणे व दुरुस्तीचा फोटो अपलोड करण्याचे १० मिनिटांचे सोपे प्रशिक्षण देणे.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SLIDE 12: Conclusion -->
+    <div class="slide" data-slide="12">
+      <div class="title-slide-wrapper">
+        <div class="hero-badge" style="border-color: var(--emerald); color: var(--emerald);">🌱 स्वच्छ पाणी, समृद्ध गाव</div>
+        <h1 class="hero-title" style="font-size: 2.6rem;">एक पाऊल डिजिटल माहूरझरीकडे!</h1>
+        <p class="hero-subtitle" style="color: var(--accent);">ग्राम जल पोर्टल सुरू करण्यासाठी माहूरझरी ग्रामपंचायत व सर्व ग्रामस्थांचे मनःपूर्वक आभार!</p>
+        
+        <div style="background: rgba(15, 23, 42, 0.8); border: 2px solid var(--emerald); border-radius: 14px; padding: 18px 32px; margin-bottom: 24px;">
+          <div style="font-size: 0.95rem; color: var(--text-muted); margin-bottom: 4px;">थेट पोर्टल लिंक:</div>
+          <a href="https://mahurzari-village-water-portal.vercel.app" target="_blank" style="color: #38bdf8; font-size: 1.35rem; font-weight: 700; text-decoration: none;">
+            🌐 mahurzari-village-water-portal.vercel.app
+          </a>
+        </div>
+
+        <p style="color: var(--text-muted); font-size: 1.15rem;">
+          आपले काही प्रश्न किंवा मौलिक सूचना असल्यास आपण विचारू शकता. धन्यवाद! 🙏
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Bottom Navigation -->
+  <div class="bottom-nav">
+    <button class="nav-arrow" onclick="prevSlide()" title="मागील स्लाईड (Previous)">◀</button>
+    <div class="dot-indicators" id="dotsContainer"></div>
+    <button class="nav-arrow" onclick="nextSlide()" title="पुढील स्लाईड (Next)">▶</button>
+  </div>
+
+  <script>
+    let currentSlide = 1;
+    const totalSlides = 12;
+
+    const slides = document.querySelectorAll('.slide');
+    const dotsContainer = document.getElementById('dotsContainer');
+    const slideIndicator = document.getElementById('slideIndicator');
+
+    // Create Dots
+    for (let i = 1; i <= totalSlides; i++) {
+      const dot = document.createElement('div');
+      dot.className = `dot ${i === 1 ? 'active' : ''}`;
+      dot.onclick = () => goToSlide(i);
+      dotsContainer.appendChild(dot);
+    }
+
+    function updateSlide() {
+      slides.forEach((s, idx) => {
+        s.classList.toggle('active', idx + 1 === currentSlide);
+      });
+      document.querySelectorAll('.dot').forEach((d, idx) => {
+        d.classList.toggle('active', idx + 1 === currentSlide);
+      });
+      slideIndicator.textContent = `Slide ${currentSlide} / ${totalSlides}`;
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function prevSlide() {
+      if (currentSlide > 1) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    function goToSlide(n) {
+      currentSlide = n;
+      updateSlide();
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.log(err);
+        });
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+    }
+
+    // Keyboard controls
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key.toLowerCase() === 'f') {
+        toggleFullscreen();
+      } else if (e.key === 'Home') {
+        goToSlide(1);
+      } else if (e.key === 'End') {
+        goToSlide(totalSlides);
+      }
+    });
+
+    // Touch swipe for phone/tablet
+    let touchStartX = 0;
+    let touchEndX = 0;
+    document.addEventListener('touchstart', e => {
+      touchStartX = e.changedTouches[0].screenX;
+    });
+    document.addEventListener('touchend', e => {
+      touchEndX = e.changedTouches[0].screenX;
+      if (touchStartX - touchEndX > 50) nextSlide();
+      if (touchEndX - touchStartX > 50) prevSlide();
+    });
+  </script>
+</body>
+</html>
