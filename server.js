@@ -1573,7 +1573,7 @@ app.get('/Mahurzari_Water_Portal_Presentation.pptx', (req, res) => {
 });
 
 // ── Ultra-Fast React Single Page Application (0ms Tab Switching) ───
-const spaRoutes = ['/', '/app', '/mobile', '/admin', '/tasks', '/home', '/report', '/support', '/login'];
+const spaRoutes = ['/', '/app', '/mobile', '/admin', '/tasks', '/home', '/report', '/support', '/login', '/presentation', '/ppt'];
 spaRoutes.forEach((route) => {
 
   app.get(route, (req, res) => {

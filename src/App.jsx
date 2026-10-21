@@ -8,6 +8,7 @@ import ReportTab from './components/ReportTab';
 import TasksTab from './components/TasksTab';
 import AdminTab from './components/AdminTab';
 import SupportTab from './components/SupportTab';
+import PresentationTab from './components/PresentationTab';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState(() => {
@@ -37,8 +38,8 @@ export default function App() {
   useEffect(() => {
     try {
       const path = window.location.pathname.replace(/^\//, '').toLowerCase();
-      if (['home', 'report', 'tasks', 'admin', 'support'].includes(path)) {
-        setActiveTab(path);
+      if (['home', 'report', 'tasks', 'admin', 'support', 'presentation', 'ppt'].includes(path)) {
+        setActiveTab(path === 'ppt' ? 'presentation' : path);
       }
     } catch (_) {}
 
@@ -243,6 +244,12 @@ export default function App() {
           {activeTab === 'support' && (
             <SupportTab 
               language={language} 
+            />
+          )}
+
+          {activeTab === 'presentation' && (
+            <PresentationTab 
+              onBack={() => handleTabSwitch('home')} 
             />
           )}
         </div>
