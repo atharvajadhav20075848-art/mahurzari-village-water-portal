@@ -360,6 +360,7 @@ export default function App() {
         onClose={() => setIsNotifModalOpen(false)}
         notifications={notifications}
         onClearAll={() => setNotifications([])}
+        language={language}
       />
 
       {/* Mobile Native Bottom Navigation Bar */}

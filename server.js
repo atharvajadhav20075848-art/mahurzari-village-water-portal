@@ -1013,32 +1013,6 @@ app.put('/api/users/:email/role', requireAuth(['Admin', 'Sarpanch']), async (req
 
 // ── Notifications & Emergency Alert Engine ──────────────────────────
 let activeEmergencyAlert = null;
-let defaultNotifications = [
-  {
-    id: 'notif_1',
-    title: 'माहूरझरी पाणी पुरवठा वेळ',
-    message: 'आज सकाळचा पाणी पुरवठा सुरळीत सुरू आहे (सकाळी ६:०० ते ८:३०). कृपया पाण्याची साठवणूक करावी.',
-    type: 'supply',
-    author: 'ग्रामपंचायत पाणी विभाग',
-    createdAt: new Date(Date.now() - 30 * 60 * 1000)
-  },
-  {
-    id: 'notif_2',
-    title: 'पिण्याच्या पाण्याची शुद्धता तपासणी',
-    message: 'आरोग्य विभागाकडून पाण्याची तपासणी पूर्ण झाली आहे. शुद्धता ९९.४% (WHO मानकांनुसार उत्तम).',
-    type: 'general',
-    author: 'आरोग्य व स्वच्छता समिती',
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-  },
-  {
-    id: 'notif_3',
-    title: 'वॉर्ड क्र. २ पाईप दुरुस्ती',
-    message: 'वॉर्ड क्र. २ मधील पाईप लिकेज दुरुस्तीचे काम तांत्रिक टीमने सुरू केले आहे.',
-    type: 'issue',
-    author: 'प्लंबर टीम',
-    createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000)
-  }
-];
 
 // GET active emergency alert
 app.get('/api/emergency/alert', (req, res) => {
@@ -1049,7 +1023,7 @@ app.get('/api/emergency/alert', (req, res) => {
 });
 
 // Trigger emergency siren alert (Sarpanch / Admin)
-app.post('/api/emergency/siren', (req, res) => {
+app.post('/api/emergency/siren', async (req, res) => {
   const { title, message, senderName, senderRole } = req.body;
   if (!title) {
     return res.status(400).json({ error: 'Title is required for emergency alert' });
@@ -1064,15 +1038,24 @@ app.post('/api/emergency/siren', (req, res) => {
     timestamp: new Date()
   };
 
-  // Prepend to notifications list
-  defaultNotifications.unshift({
-    id: 'notif_' + Date.now(),
-    title: '🚨 ' + activeEmergencyAlert.title,
-    message: activeEmergencyAlert.message,
-    type: 'emergency',
-    author: activeEmergencyAlert.senderName,
-    createdAt: new Date()
-  });
+  try {
+    if (mongoose.connection.readyState === 1) {
+      await Notification.create({
+        id: Date.now(),
+        title: '🚨 ' + activeEmergencyAlert.title,
+        message: activeEmergencyAlert.message,
+        type: 'emergency',
+        senderName: activeEmergencyAlert.senderName,
+        senderRole: activeEmergencyAlert.senderRole,
+        targetRole: 'all',
+        isEmergency: true,
+        createdAt: new Date(),
+        readBy: []
+      });
+    }
+  } catch (e) {
+    console.warn("Notice DB save error:", e.message);
+  }
 
   res.json({ success: true, alert: activeEmergencyAlert });
 });
@@ -1083,7 +1066,7 @@ app.post(['/api/emergency/dismiss', '/api/emergency/clear'], (req, res) => {
   res.json({ success: true, message: 'Emergency alert cleared' });
 });
 
-// Fetch notifications for current user (MongoDB + fallback defaults)
+// Fetch REAL notifications from MongoDB only (no fake demo messages)
 app.get('/api/notifications', async (req, res) => {
   const userEmail = req.session?.user?.email || '';
   const userRole = req.session?.user?.role || 'People/User';
@@ -1097,22 +1080,18 @@ app.get('/api/notifications', async (req, res) => {
       ]
     };
 
-    const notifs = await Notification.find(query).sort({ createdAt: -1 }).limit(30);
-    let mapped = (notifs || []).map(n => {
+    const notifs = await Notification.find(query).sort({ createdAt: -1 }).limit(50);
+    const mapped = (notifs || []).map(n => {
       const obj = n.toObject ? n.toObject() : n;
       obj.isRead = userEmail ? (obj.readBy || []).includes(userEmail) : false;
       return obj;
     });
 
-    if (mapped.length === 0) {
-      mapped = defaultNotifications;
-    }
-
     const unreadCount = mapped.filter(n => !n.isRead).length;
     res.json({ success: true, unreadCount, notifications: mapped });
   } catch (err) {
-    console.warn("Notifications fallback to defaults:", err.message);
-    res.json({ success: true, unreadCount: defaultNotifications.length, notifications: defaultNotifications });
+    console.warn("Notifications fetch error:", err.message);
+    res.json({ success: true, unreadCount: 0, notifications: [] });
   }
 });
 
