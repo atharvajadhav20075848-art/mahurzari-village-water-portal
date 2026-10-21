@@ -1395,14 +1395,9 @@ app.post('/api/heartbeat', async (req, res) => {
 
 // Direct APK Download
 app.get('/api/download/apk', (req, res) => {
-  const apkPath = path.join(__dirname, 'village-water-app-debug.apk');
-  if (fs.existsSync(apkPath)) {
-    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-    res.setHeader('Content-Disposition', 'attachment; filename="Gram-Jal-Mahurzari.apk"');
-    return res.sendFile(apkPath);
-  }
-  res.status(404).send('APK file not available on server.');
+  res.redirect('/public/village-water-app-debug.apk');
 });
+
 
 
 app.post('/api/issues', uploadSafe('photo'), async (req, res) => {
