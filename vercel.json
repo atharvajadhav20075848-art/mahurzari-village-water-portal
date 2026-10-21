@@ -77,14 +77,6 @@
       "dest": "/public/sw.js"
     },
     {
-      "src": "/presentation(.*)",
-      "dest": "/api/index.js"
-    },
-    {
-      "src": "/Mahurzari_Water_Portal_Presentation.pptx",
-      "dest": "/api/index.js"
-    },
-    {
       "src": "/(.*)",
       "dest": "/api/index.js"
     }
