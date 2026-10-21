@@ -78,15 +78,15 @@
     },
     {
       "src": "/presentation",
-      "dest": "/api/index.js"
+      "dest": "/dist/presentation.html"
     },
     {
       "src": "/presentation.html",
-      "dest": "/api/index.js"
+      "dest": "/dist/presentation.html"
     },
     {
       "src": "/Mahurzari_Water_Portal_Presentation.pptx",
-      "dest": "/api/index.js"
+      "dest": "/dist/Mahurzari_Water_Portal_Presentation.pptx"
     },
     {
       "src": "/(.*)",

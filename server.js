@@ -1511,16 +1511,35 @@ app.put('/api/issues/:id/resolve', requireAuth(['Admin', 'Sarpanch', 'Plumber/Te
 });
 
 app.get(['/presentation', '/presentation.html'], (req, res) => {
-  const pPath = path.join(__dirname, 'public', 'presentation.html');
-  if (fs.existsSync(pPath)) {
-    return res.sendFile(pPath);
+  const candidates = [
+    path.join(__dirname, 'public', 'presentation.html'),
+    path.join(process.cwd(), 'public', 'presentation.html'),
+    path.join(__dirname, 'dist', 'presentation.html'),
+    path.join(process.cwd(), 'dist', 'presentation.html'),
+    path.join(__dirname, 'presentation.html'),
+    path.join(process.cwd(), 'presentation.html')
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      return res.sendFile(p);
+    }
   }
-  res.sendFile(path.join(__dirname, 'presentation.html'));
+  res.status(404).send('Presentation not found');
 });
 
 app.get('/Mahurzari_Water_Portal_Presentation.pptx', (req, res) => {
-  const pptxPath = path.join(__dirname, 'Mahurzari_Water_Portal_Presentation.pptx');
-  res.download(pptxPath, 'Mahurzari_Water_Portal_Presentation.pptx');
+  const candidates = [
+    path.join(__dirname, 'Mahurzari_Water_Portal_Presentation.pptx'),
+    path.join(process.cwd(), 'Mahurzari_Water_Portal_Presentation.pptx'),
+    path.join(__dirname, 'public', 'Mahurzari_Water_Portal_Presentation.pptx'),
+    path.join(process.cwd(), 'public', 'Mahurzari_Water_Portal_Presentation.pptx')
+  ];
+  for (const p of candidates) {
+    if (fs.existsSync(p)) {
+      return res.download(p, 'Mahurzari_Water_Portal_Presentation.pptx');
+    }
+  }
+  res.status(404).send('Presentation PPTX not found');
 });
 
 // ── Ultra-Fast React Single Page Application (0ms Tab Switching) ───
