@@ -642,16 +642,19 @@ app.post('/api/auth/google', async (req, res) => {
     }
 
     let user = null;
-    if (mongoose.connection.readyState === 1) {
-      try {
-        user = await User.findOne({ email });
-      } catch (_) {}
+    if (mongoose.connection.readyState !== 1) {
+      await connectToDatabase();
     }
+    try {
+      user = await User.findOne({ email });
+    } catch (_) {}
+
     if (!user) {
-      user = memoryUsers.find(u => u.email === email);
+      user = memoryUsers.find(u => u.email.toLowerCase() === email);
     }
 
     if (!user) {
+      // New resident signing in for first time
       user = {
         email: email,
         name: name,
@@ -661,6 +664,15 @@ app.post('/api/auth/google', async (req, res) => {
       memoryUsers.push(user);
       if (mongoose.connection.readyState === 1) {
         User.create(user).catch(() => {});
+      }
+    } else {
+      // User was already assigned a role by Admin/Sarpanch or existed in database!
+      // Keep their role intact, only update name if new real name is provided
+      if (name && (!user.name || user.name === user.email.split('@')[0])) {
+        user.name = name;
+        if (mongoose.connection.readyState === 1) {
+          User.updateOne({ email: user.email }, { $set: { name: name } }).catch(() => {});
+        }
       }
     }
 
@@ -737,8 +749,23 @@ app.post('/api/auth/google', async (req, res) => {
 });
 
 app.get('/api/auth/status', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      await connectToDatabase();
+    }
+  } catch (_) {}
+
   const verifiedUser = extractUserFromRequest(req);
   if (verifiedUser) {
+    // Keep user's role synchronized with any role assigned by Admin/Sarpanch in database
+    try {
+      const dbUser = await User.findOne({ email: verifiedUser.email.toLowerCase().trim() });
+      if (dbUser && dbUser.role) {
+        verifiedUser.role = dbUser.role;
+        if (dbUser.name) verifiedUser.name = dbUser.name;
+      }
+    } catch (_) {}
+
     req.session.user = verifiedUser;
     return res.json({ loggedIn: true, user: verifiedUser });
   }
@@ -889,17 +916,33 @@ app.put('/api/users/:email/role', requireAuth(['Admin', 'Sarpanch']), async (req
       return res.status(400).json({ error: `Invalid role. Allowed roles: ${validRoles.join(', ')}` });
     }
 
-    const user = await User.findOne({ email: targetEmail });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    if (mongoose.connection.readyState !== 1) {
+      await connectToDatabase();
     }
 
-    const oldRole = user.role;
-    user.role = role;
+    let user = await User.findOne({ email: targetEmail });
+    let oldRole = 'None (New Pre-assignment)';
 
-    // If role promoted to official and password is missing, set default hashed password
-    if ((role === 'Admin' || role === 'Sarpanch') && (!user.password || user.password === 'citizen_auto_auth' || user.password === 'google_oauth_user')) {
-      user.password = hashPassword(role === 'Sarpanch' ? 'sarpanch123' : 'admin123');
+    if (!user) {
+      // Upsert: Pre-assign role to email before their first Google or email login!
+      user = new User({
+        email: targetEmail,
+        name: formatNameFromEmail(targetEmail),
+        role: role,
+        password: hashPassword(role === 'Sarpanch' ? 'sarpanch123' : (role === 'Admin' ? 'admin123' : 'google_oauth_user'))
+      });
+      memoryUsers.push({ email: targetEmail, name: user.name, role: role, password: user.password });
+    } else {
+      oldRole = user.role;
+      user.role = role;
+
+      // If role promoted to official and password is missing, set default hashed password
+      if ((role === 'Admin' || role === 'Sarpanch') && (!user.password || user.password === 'citizen_auto_auth' || user.password === 'google_oauth_user')) {
+        user.password = hashPassword(role === 'Sarpanch' ? 'sarpanch123' : 'admin123');
+      }
+
+      const memUser = memoryUsers.find(u => u.email.toLowerCase() === targetEmail);
+      if (memUser) memUser.role = role;
     }
 
     await user.save();

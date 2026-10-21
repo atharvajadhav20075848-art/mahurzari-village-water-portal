@@ -26,6 +26,9 @@ export default function AdminTab({ currentUser, language = 'en' }) {
   const [userSearch, setUserSearch] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('all');
   const [updatingUserEmail, setUpdatingUserEmail] = useState(null);
+  const [newAssignEmail, setNewAssignEmail] = useState('');
+  const [newAssignRole, setNewAssignRole] = useState('Plumber/Technician');
+  const [preAssigning, setPreAssigning] = useState(false);
 
   const fetchUsers = async () => {
     setUsersLoading(true);
@@ -59,8 +62,22 @@ export default function AdminTab({ currentUser, language = 'en' }) {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setUsersList(prev => prev.map(u => u.email === targetEmail ? { ...u, role: newRole } : u));
-        alert("✅ " + (t('role_updated_success') || "User role updated successfully!"));
+        setUsersList(prev => {
+          const exists = prev.some(u => u.email.toLowerCase() === targetEmail.toLowerCase());
+          if (exists) {
+            return prev.map(u => u.email.toLowerCase() === targetEmail.toLowerCase() ? { ...u, role: newRole } : u);
+          } else {
+            return [{
+              id: Date.now(),
+              name: targetEmail.split('@')[0],
+              email: targetEmail,
+              role: newRole,
+              createdAt: new Date().toISOString(),
+              isOnline: false
+            }, ...prev];
+          }
+        });
+        alert(`✅ Role "${newRole}" assigned successfully to ${targetEmail}!\nWhen this user signs in via Google or email, they will automatically enter as ${newRole}.`);
       } else {
         alert(data.error || "Failed to update role");
       }
@@ -70,6 +87,19 @@ export default function AdminTab({ currentUser, language = 'en' }) {
     } finally {
       setUpdatingUserEmail(null);
     }
+  };
+
+  const handlePreAssignRole = async (e) => {
+    e.preventDefault();
+    const clean = newAssignEmail.trim().toLowerCase();
+    if (!clean || !clean.includes('@')) {
+      alert("Please enter a valid Gmail / Email address.");
+      return;
+    }
+    setPreAssigning(true);
+    await handleUpdateRole(clean, newAssignRole);
+    setNewAssignEmail('');
+    setPreAssigning(false);
   };
 
   const mapContainerRef = useRef(null);
@@ -755,6 +785,56 @@ export default function AdminTab({ currentUser, language = 'en' }) {
                 <p className="text-[10px] mt-0.5">Full Command Center with live GPS user map, police emergency sirens, database management & role control.</p>
               </div>
             </div>
+          </div>
+
+          {/* Pre-Assign Role to Any Gmail / User Form */}
+          <div className="bg-white rounded-3xl border border-outline-variant/60 p-4 sm:p-5 shadow-sm flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-primary font-headline font-bold text-sm">
+              <span className="material-symbols-outlined text-secondary text-lg">person_add</span>
+              <span>Pre-Assign Role to Gmail / New Staff</span>
+            </div>
+            <p className="text-xs text-on-surface-variant font-body">
+              Assign a role (Sarpanch, Plumber/Technician, Admin) to any Gmail ID in advance. When that person logs in with Google from their phone, they will automatically receive this assigned role!
+            </p>
+            <form onSubmit={handlePreAssignRole} className="grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-center">
+              <div className="sm:col-span-6 relative">
+                <span className="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-base">
+                  mail
+                </span>
+                <input
+                  type="email"
+                  required
+                  placeholder="e.g. plumber.mahurzari@gmail.com"
+                  value={newAssignEmail}
+                  onChange={(e) => setNewAssignEmail(e.target.value)}
+                  className="w-full pl-9 pr-3 py-2 bg-surface-container-low border border-outline-variant rounded-xl text-xs font-body focus:outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="sm:col-span-4">
+                <select
+                  value={newAssignRole}
+                  onChange={(e) => setNewAssignRole(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-container-low border border-outline-variant rounded-xl text-xs font-headline font-bold text-on-surface focus:outline-none focus:border-primary cursor-pointer"
+                >
+                  <option value="Plumber/Technician">🔧 Plumber / Technician</option>
+                  <option value="Sarpanch">👑 Gram Sarpanch</option>
+                  <option value="Admin">⚙️ Panchayat Admin</option>
+                  <option value="People/User">👤 Citizen (People/User)</option>
+                </select>
+              </div>
+
+              <div className="sm:col-span-2">
+                <button
+                  type="submit"
+                  disabled={preAssigning}
+                  className="w-full py-2 px-3 bg-primary text-white font-headline font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 hover:bg-primary-container shadow-sm transition-all cursor-pointer disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-sm">how_to_reg</span>
+                  <span>{preAssigning ? 'Saving...' : 'Assign'}</span>
+                </button>
+              </div>
+            </form>
           </div>
 
           {/* User Directory & Role Assignment Controls */}
