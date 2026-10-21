@@ -44,6 +44,41 @@ app.use('/assets', express.static(path.join(__dirname, 'dist', 'assets')));
 app.use('/public', express.static(path.join(__dirname, 'public')));
 app.set('trust proxy', true);
 
+// Direct Presentation Deck & PPTX handler
+app.use((req, res, next) => {
+  if (req.url.toLowerCase().includes('presentation') || req.path.toLowerCase().includes('presentation')) {
+    const candidates = [
+      path.join(__dirname, 'dist', 'presentation.html'),
+      path.join(process.cwd(), 'dist', 'presentation.html'),
+      path.join(__dirname, 'public', 'presentation.html'),
+      path.join(process.cwd(), 'public', 'presentation.html'),
+      path.join(__dirname, 'presentation.html'),
+      path.join(process.cwd(), 'presentation.html')
+    ];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) {
+        return res.sendFile(p);
+      }
+    }
+  }
+  if (req.url.toLowerCase().includes('.pptx')) {
+    const candidates = [
+      path.join(__dirname, 'Mahurzari_Water_Portal_Presentation.pptx'),
+      path.join(process.cwd(), 'Mahurzari_Water_Portal_Presentation.pptx'),
+      path.join(__dirname, 'dist', 'Mahurzari_Water_Portal_Presentation.pptx'),
+      path.join(process.cwd(), 'dist', 'Mahurzari_Water_Portal_Presentation.pptx'),
+      path.join(__dirname, 'public', 'Mahurzari_Water_Portal_Presentation.pptx'),
+      path.join(process.cwd(), 'public', 'Mahurzari_Water_Portal_Presentation.pptx')
+    ];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) {
+        return res.download(p, 'Mahurzari_Water_Portal_Presentation.pptx');
+      }
+    }
+  }
+  next();
+});
+
 const SESSION_SECRET = process.env.SESSION_SECRET || 'mahurzari_village_portal_secure_key_2026';
 
 app.use(session({
