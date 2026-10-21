@@ -81,7 +81,6 @@ class ErrorBoundary extends Component {
 }
 
 // ── Bulletproof Global Fetch Interceptor ──────────────────────────────
-// Safe on mobile, handles Request objects and localStorage security errors
 const _nativeFetch = window.fetch;
 window.fetch = function (url, opts) {
   try {
@@ -104,27 +103,27 @@ window.fetch = function (url, opts) {
         return _nativeFetch.call(window, url);
       }
 
-      opts = opts || {};
-      if (!opts.headers) {
-        opts.headers = {};
-      }
-      if (typeof Headers !== 'undefined' && opts.headers instanceof Headers) {
-        if (savedToken && !opts.headers.has('x-auth-token')) {
-          opts.headers.set('x-auth-token', savedToken);
-          opts.headers.set('Authorization', `Bearer ${savedToken}`);
+      const finalOpts = opts ? { ...opts } : {};
+      finalOpts.headers = finalOpts.headers ? (finalOpts.headers instanceof Headers ? finalOpts.headers : { ...finalOpts.headers }) : {};
+
+      if (typeof Headers !== 'undefined' && finalOpts.headers instanceof Headers) {
+        if (savedToken && !finalOpts.headers.has('x-auth-token')) {
+          finalOpts.headers.set('x-auth-token', savedToken);
+          finalOpts.headers.set('Authorization', `Bearer ${savedToken}`);
         }
-        if (savedEmail && !opts.headers.has('x-user-email')) {
-          opts.headers.set('x-user-email', encodeURIComponent(savedEmail));
+        if (savedEmail && !finalOpts.headers.has('x-user-email')) {
+          finalOpts.headers.set('x-user-email', encodeURIComponent(savedEmail));
         }
-      } else if (typeof opts.headers === 'object') {
+      } else if (typeof finalOpts.headers === 'object') {
         if (savedToken) {
-          if (!opts.headers['x-auth-token']) opts.headers['x-auth-token'] = savedToken;
-          if (!opts.headers['Authorization']) opts.headers['Authorization'] = `Bearer ${savedToken}`;
+          if (!finalOpts.headers['x-auth-token']) finalOpts.headers['x-auth-token'] = savedToken;
+          if (!finalOpts.headers['Authorization']) finalOpts.headers['Authorization'] = `Bearer ${savedToken}`;
         }
-        if (savedEmail && !opts.headers['x-user-email']) {
-          opts.headers['x-user-email'] = encodeURIComponent(savedEmail);
+        if (savedEmail && !finalOpts.headers['x-user-email']) {
+          finalOpts.headers['x-user-email'] = encodeURIComponent(savedEmail);
         }
       }
+      return _nativeFetch.call(window, url, finalOpts);
     }
   } catch (err) {
     console.warn("Fetch interceptor pass-through:", err);
@@ -132,10 +131,33 @@ window.fetch = function (url, opts) {
   return _nativeFetch.apply(window, arguments);
 };
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
-  </React.StrictMode>
-);
+// ── Bulletproof Mounting with DOM Readiness Guarantee ────────────────
+function mountApplication() {
+  const rootElement = document.getElementById('root');
+  if (!rootElement) {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', mountApplication, { once: true });
+    } else {
+      setTimeout(mountApplication, 20);
+    }
+    return;
+  }
+
+  // Prevent multiple createRoot calls on the same container
+  if (!rootElement.__reactRootMounted) {
+    rootElement.__reactRootMounted = true;
+    ReactDOM.createRoot(rootElement).render(
+      <React.StrictMode>
+        <ErrorBoundary>
+          <App />
+        </ErrorBoundary>
+      </React.StrictMode>
+    );
+  }
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', mountApplication, { once: true });
+} else {
+  mountApplication();
+}
