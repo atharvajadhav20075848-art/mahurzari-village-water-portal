@@ -1471,6 +1471,11 @@ app.put('/api/issues/:id/resolve', requireAuth(['Admin', 'Sarpanch', 'Plumber/Te
 const spaRoutes = ['/', '/app', '/mobile', '/admin', '/tasks', '/home', '/report', '/support', '/login'];
 spaRoutes.forEach((route) => {
   app.get(route, (req, res) => {
+    // Prevent browser from caching old index.html bundles and eliminate white screen on normal reload
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+    res.setHeader('Clear-Site-Data', '"cache"');
     const distIndex = path.join(__dirname, 'dist', 'index.html');
     if (fs.existsSync(distIndex)) {
       return res.sendFile(distIndex);

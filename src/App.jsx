@@ -10,8 +10,20 @@ import AdminTab from './components/AdminTab';
 import SupportTab from './components/SupportTab';
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [authChecked, setAuthChecked] = useState(false);
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      const email = localStorage.getItem('gram_user_email');
+      const role = localStorage.getItem('gram_user_role');
+      if (email) {
+        return {
+          email,
+          role: role || 'People/User',
+          name: email.includes('@') ? email.split('@')[0] : 'User'
+        };
+      }
+    } catch (_) {}
+    return null;
+  });
   const [activeTab, setActiveTab] = useState('home');
   const [language, setLanguage] = useState(() => localStorage.getItem('gram_lang') || 'en');
   const [emergencyAlert, setEmergencyAlert] = useState(null);
@@ -21,7 +33,7 @@ export default function App() {
     localStorage.setItem('gram_lang', newLang);
   };
 
-  // 1. Initial Path Detection & Auth Check with Mobile-Safe Timeout
+  // 1. Initial Path Detection & Background Session Verification (Instant 0ms Page Render)
   useEffect(() => {
     try {
       const path = window.location.pathname.replace(/^\//, '').toLowerCase();
@@ -31,27 +43,30 @@ export default function App() {
     } catch (_) {}
 
     const checkSession = async () => {
-      // 2.5s hard timeout so mobile network stalls never leave a blank screen
-      const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 2500));
-      const fetchPromise = (async () => {
-        try {
-          const res = await fetch('/api/auth/status');
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.loggedIn && data.user) {
-              setCurrentUser(data.user);
-            } else {
-              try { localStorage.removeItem('gram_auth_token'); } catch (_) {}
+      try {
+        const res = await fetch('/api/auth/status');
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.loggedIn && data.user) {
+            setCurrentUser(data.user);
+            try {
+              localStorage.setItem('gram_user_email', data.user.email);
+              localStorage.setItem('gram_user_role', data.user.role);
+            } catch (_) {}
+          } else {
+            const localToken = localStorage.getItem('gram_auth_token');
+            if (!localToken) {
               setCurrentUser(null);
+              try {
+                localStorage.removeItem('gram_user_email');
+                localStorage.removeItem('gram_user_role');
+              } catch (_) {}
             }
           }
-        } catch (e) {
-          console.warn("Auth check note:", e);
         }
-      })();
-
-      await Promise.race([fetchPromise, timeoutPromise]);
-      setAuthChecked(true);
+      } catch (e) {
+        console.warn("Auth check note:", e);
+      }
     };
 
     checkSession();
@@ -137,17 +152,7 @@ export default function App() {
     } catch (e) {}
   };
 
-  // Loading state
-  if (!authChecked) {
-    return (
-      <div className="min-h-screen bg-surface flex flex-col items-center justify-center gap-3">
-        <span className="material-symbols-outlined animate-spin text-4xl text-primary">progress_activity</span>
-        <p className="font-headline font-bold text-xs uppercase tracking-wider text-primary">
-          Loading Gram Jal Portal...
-        </p>
-      </div>
-    );
-  }
+
 
   // Not logged in -> Show Login View
   if (!currentUser) {

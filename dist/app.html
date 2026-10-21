@@ -712,7 +712,9 @@ async function triggerPwaInstall() {
 }
 
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/public/sw.js').catch(err => console.log('SW registration failed:', err));
+  navigator.serviceWorker.getRegistrations().then(regs => {
+    regs.forEach(r => r.unregister());
+  }).catch(() => {});
 }
 </script>
 <script src="/public/js/i18n.js"></script>
